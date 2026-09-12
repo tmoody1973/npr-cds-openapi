@@ -30,7 +30,7 @@ export function rightsFor(hit: Hit, homeStation?: string): string | undefined {
   return notes.length ? notes.join('; ') : undefined;
 }
 
-export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ searched: string; hits: FoundHit[]; scanned: number }> {
+export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ searched: string; hits: FoundHit[]; scanned: number; station?: Station }> {
   const { query, station, show, collection, since, until } = args;
   if (!query && !station && !show && !collection) throw new Error('Give me at least one of: query, station, show, collection.');
   const limit = args.limit ?? 10;
@@ -42,9 +42,11 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   if (podcasts) base.set('excludedProfileIds', 'newscast');
   const noun = podcasts ? 'podcast episodes' : 'stories';
   if (since || until) { base.set('publishDateTime', `${since ?? ''}...${until ?? ''}`); searched.push(`published ${since ?? 'any'} to ${until ?? 'now'}`); }
+  let resolved: Station | undefined;
   if (station) {
     const [s] = await deps.catalog.findStation(station);
     if (!s) throw new Error(`No station matches "${station}".`);
+    resolved = s;
     base.set('ownerHrefs', ORG + s.id); searched.push(`station ${s.name} (${s.id})`);
   }
 
@@ -113,5 +115,5 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
     const rights = rightsFor(h, deps.homeStation);
     if (rights) h.rights = rights;
   }
-  return { searched: searched.join('; '), hits, scanned: scannedTotal };
+  return { searched: searched.join('; '), hits, scanned: scannedTotal, ...(resolved ? { station: resolved } : {}) };
 }

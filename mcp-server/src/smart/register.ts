@@ -157,7 +157,7 @@ export function registerSmartTools(server: McpServer) {
     'coverage_scan',
     {
       description: 'What the network published on a topic: NPR plus every station\'s newest stories in the window, grouped by station, or only the stations you name. For a news director planning a local angle.',
-      inputSchema: { topic: z.string(), ...window, stations: z.array(z.string()).optional().describe('Station names to limit to.'), limit: z.number().int().min(1).max(50).optional().describe('Per station. Default 10.') },
+      inputSchema: { topic: z.string(), ...window, stations: z.array(z.string()).optional().describe('Station names to limit to.'), limit: z.number().int().min(1).max(50).optional().describe('Per station. Default 10.'), depth: z.number().int().min(1).max(6).optional().describe('Pages of 300 for the network scan. Default 1.') },
       annotations: { readOnlyHint: true },
     },
     safe((args) => coverageScan(args, deps)),

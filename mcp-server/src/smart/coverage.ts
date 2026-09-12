@@ -69,7 +69,7 @@ export async function coverageScan(
       byOwner.set(h.owner, [...(byOwner.get(h.owner) ?? []), h]);
     }
     for (const [id, hits] of byOwner) groups.push({ station: { id, name: names.get(id) ?? id }, hits: hits.slice(0, limit) });
-    searched.push(`"${args.topic}" since ${args.since}: NPR's newest stories (${npr.scanned} read) and the network's newest ${docs.length}`);
+    searched.push(`"${args.topic}" since ${args.since}: NPR's newest stories (${npr.scanned} read) and the network's newest ${docs.length}${capped ? ' (the window holds more than that; results may be incomplete, raise depth)' : ''}`);
   }
   groups.sort((a, b) => b.hits.length - a.hits.length || a.station.name.localeCompare(b.station.name));
   return { searched: searched.join('; '), byStation: groups };

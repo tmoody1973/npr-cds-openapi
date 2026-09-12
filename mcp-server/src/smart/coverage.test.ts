@@ -89,3 +89,37 @@ test('coverage_gap marks NPR stories localized or not against home station stori
   assert.match(r2.npr[0].gap!, /not localized/i);
   assert.equal(r2.ours.length, 0);
 });
+
+test('search_archive clamps the last window to the from-date', async () => {
+  const d = deps({ s921: [story('old', 'Summerfest 2015', '2015-06-20', 's921')] });
+  const r = await searchArchive({ query: 'Summerfest', station: 'Radio Milwaukee', from: '2015-06-01', to: '2015-09-01' }, d);
+  assert.equal(d.queries[0].get('publishDateTime'), '2015-06-01...2015-09-01');
+  assert.deepEqual(r.hits.map((h) => h.id), ['old']); assert.equal(r.windowsScanned, 1);
+});
+
+test('coverage_scan keeps going when one named station does not resolve', async () => {
+  const d = deps({ s55: [story('k1', 'LA housing vote', '2026-09-11', 's55')] });
+  const r = await coverageScan({ topic: 'housing', since: '2026-09-08', stations: ['Radio Nowhere', 'KCRW'] }, d);
+  const bad = r.byStation.find((g) => g.station.name === 'Radio Nowhere')!;
+  assert.match(bad.error!, /No station matches/); assert.equal(bad.hits.length, 0);
+  assert.equal(r.byStation.find((g) => g.station.id === 's55')!.hits.length, 1);
+});
+
+test('coverage_scan says when the network scan may be incomplete, and skips ownerless docs', async () => {
+  const all = Array.from({ length: 300 }, (_, i) => story(`x${i}`, 'housing note', '2026-09-11', 's55'));
+  all.push({ ...story('noowner', 'housing orphan', '2026-09-11'), owners: [] });
+  const d = deps({ s1: [] }, all);
+  const r = await coverageScan({ topic: 'housing', since: '2026-09-08' }, d);
+  assert.match(r.searched, /may be incomplete/);
+  assert.ok(!r.byStation.some((g) => g.station.id === ''), 'no blank station group');
+  const d2 = deps({ s1: [] }, all);
+  await coverageScan({ topic: 'housing', since: '2026-09-08', depth: 2 }, d2);
+  assert.ok(d2.queries.some((q) => q.get('offset') === '300'), 'depth pages the network scan');
+});
+
+test('coverage_gap with zero local stories marks every NPR story a gap, and without a home station it says so', async () => {
+  const d = deps({ s1: [story('n1', 'Housing costs climb', '2026-09-10', 's1')], s921: [] });
+  const r = await coverageGap({ topic: 'housing', since: '2026-09-08' }, d);
+  assert.equal(r.summary, '1 of 1 NPR stories have no obvious local version.');
+  await assert.rejects(() => coverageGap({ topic: 'housing', since: '2026-09-08' }, { ...d, homeStation: undefined }), /home station/);
+});
