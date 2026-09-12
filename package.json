@@ -23,5 +23,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/tmoody1973/npr-cds-openapi.git"
-  }
+  },
+  "packageManager": "pnpm@10.19.0"
 }
