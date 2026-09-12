@@ -1,6 +1,6 @@
 // Tools for the people who publish: "why isn't my story on the site", "what labels does this
 // station use", "what changed since this morning". Same deps as find_stories.
-import { toHit, type Hit } from './compact';
+import { PREMIUM_NOTE, toHit, type Hit } from './compact';
 import type { FindDeps } from './find';
 import { NPR_SERVICE_ID } from './cds';
 
@@ -77,23 +77,30 @@ export async function checkStory(args: { id?: string; url?: string; station?: st
 
 // ---- station_labels ----
 type Label = { id: string; name: string; count: number };
-const GROUPS: Record<string, string> = { series: 'shows', program: 'programs', topic: 'topics', tag: 'tags', category: 'categories' };
+const GROUPS: Record<string, string> = { series: 'shows', program: 'programs', topic: 'topics', tag: 'tags', category: 'categories', 'podcast-channel': 'podcasts' };
 
 export async function stationLabels(args: { station?: string }, deps: FindDeps) {
   const station = await resolveStation(deps, args.station);
   if (!station) throw new Error('Give me a station name, or set NPR_CDS_HOME_STATION.');
-  const docs = (await deps.cdsQuery(newestFrom(station))).resources ?? [];
-  const names = await deps.catalog.learnFromDocs(docs);
+  const podcastQuery = newestFrom(station); podcastQuery.set('profileIds', 'podcast-episode'); podcastQuery.set('excludedProfileIds', 'newscast');
+  const [stories, episodes] = await Promise.all([deps.cdsQuery(newestFrom(station)), deps.cdsQuery(podcastQuery)]);
+  const docs: any[] = stories.resources ?? [];
+  const podcastDocs: any[] = episodes.resources ?? [];
+  const names = await deps.catalog.learnFromDocs([...docs, ...podcastDocs]);
   const counts = new Map<string, { rel: string; count: number }>();
-  for (const d of docs) for (const l of (d.collections ?? []).filter(isRealLink)) {
-    const rel = (l.rels ?? [])[0] ?? 'collection';
-    const id = idFromLink(l.href);
-    counts.set(id, { rel, count: (counts.get(id)?.count ?? 0) + 1 });
-  }
-  const out: Record<string, Label[]> = { shows: [], programs: [], topics: [], tags: [], categories: [], other: [] };
+  const tally = (set: any[], only?: string) => {
+    for (const d of set) for (const l of (d.collections ?? []).filter(isRealLink)) {
+      const rel = (l.rels ?? [])[0] ?? 'collection';
+      if (only ? rel !== only : rel === 'podcast-channel') continue;
+      const id = idFromLink(l.href);
+      counts.set(id, { rel, count: (counts.get(id)?.count ?? 0) + 1 });
+    }
+  };
+  tally(docs); tally(podcastDocs, 'podcast-channel');
+  const out: Record<string, Label[]> = { shows: [], podcasts: [], programs: [], topics: [], tags: [], categories: [], other: [] };
   for (const [id, { rel, count }] of counts) out[GROUPS[rel] ?? 'other'].push({ id, name: names.get(id)?.title ?? id, count });
   for (const list of Object.values(out)) list.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  return { station, scanned: docs.length, ...out };
+  return { station, scanned: docs.length, scannedPodcastEpisodes: podcastDocs.length, ...out };
 }
 
 // ---- whats_new_since ----
@@ -118,7 +125,7 @@ export async function whatsNewSince(args: { since: string; station?: string; lim
 }
 
 // ---- latest_newscast ----
-export const PREMIUM_NOTE = 'premium audio: play or link to it, never store or download it';
+export { PREMIUM_NOTE };
 
 export async function latestNewscast(args: { length?: 'long' | 'short'; station?: string }, deps: FindDeps) {
   const station = args.station ? await resolveStation(deps, args.station) : { id: NPR_SERVICE_ID, name: 'NPR' };

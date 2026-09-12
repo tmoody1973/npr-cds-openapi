@@ -95,3 +95,35 @@ test('station only returns that station\'s newest stories with no collection fil
   assert.equal(d.queries[0].get('ownerHrefs'), 'https://organization.api.npr.org/v4/services/s921');
   assert.equal(r.hits.length, 2); assert.match(r.searched, /newest stories/);
 });
+
+test('kind=podcasts queries podcast episodes, excludes newscasts, and says so', async () => {
+  const d = deps();
+  const r = await findStories({ query: 'AI', kind: 'podcasts' }, d);
+  const scan = d.queries.find((q) => !q.get('collectionIds'))!;
+  assert.equal(scan.get('profileIds'), 'podcast-episode'); assert.equal(scan.get('excludedProfileIds'), 'newscast');
+  assert.match(r.searched, /podcast/);
+});
+
+test('kind defaults to stories', async () => {
+  const d = deps(); await findStories({ query: 'AI' }, d);
+  assert.equal(d.queries[0].get('profileIds'), 'story'); assert.equal(d.queries[0].get('excludedProfileIds'), null);
+});
+
+test('a premium hit carries the premium note, and both notes when it is also another station\'s', async () => {
+  const d = deps();
+  const orig = d.cdsQuery;
+  d.cdsQuery = async (p) => { const r = await orig(p); return { resources: r.resources.map((x: any) => ({ ...x, profiles: [{ href: '/v1/profiles/has-premium-audio', rels: ['interface'] }] })) }; };
+  const r = await findStories({ query: 'Angels' }, d);
+  assert.match(r.hits[0].rights!, /premium/); assert.match(r.hits[0].rights!, /display-only/);
+  const own = await findStories({ station: 'radio milwaukee', show: 'Ladies First' }, d);
+  assert.match(own.hits[0].rights!, /premium/); assert.doesNotMatch(own.hits[0].rights!, /display-only/);
+});
+
+test('an unknown podcast is learned from the station\'s newest podcast episodes', async () => {
+  const d = deps(); let learned = false;
+  d.catalog.findCollection = async (q) => (/bites/i.test(q) && learned ? [{ id: '718413877', title: 'This Bites', type: 'podcast-channel' }] : []);
+  d.catalog.learnFromDocs = async (docs: any[]) => { if (docs.length) learned = true; return new Map(); };
+  await findStories({ show: 'This Bites', kind: 'podcasts' }, d);
+  assert.equal(d.queries[0].get('profileIds'), 'podcast-episode', 'the learning scan is a podcast scan');
+  assert.equal(d.queries[0].get('ownerHrefs'), 'https://organization.api.npr.org/v4/services/s921');
+});

@@ -198,3 +198,15 @@ test('latest_newscast flags a newscast with no audio asset instead of presenting
   const r = await latestNewscast({}, deps([newscast('nx-s1-20260912-1600-long', 280, { audio: [], assets: {} })]));
   assert.equal(r.audio, undefined); assert.match(r.warning ?? '', /no audio/i);
 });
+
+test('station_labels lists podcasts with episode counts from a separate podcast scan', async () => {
+  const ep = (id: string) => full({ id, profiles: [{ href: '/v1/profiles/podcast-episode', rels: ['type'] }], collections: [{ href: '/v1/documents/718413877', rels: ['podcast-channel'] }] });
+  const d = deps([full()]);
+  const orig = d.cdsQuery;
+  d.cdsQuery = async (p) => (p.get('profileIds') === 'podcast-episode' ? (d.queries.push(p), { resources: [ep('e1'), ep('e2')] }) : orig(p));
+  d.catalog.learnFromDocs = async (docs: any[]) => new Map([['718413877', { id: '718413877', title: 'This Bites', type: 'podcast-channel' }], ['g-s921-13049', { id: 'g-s921-13049', title: 'Ladies First', type: 'series' }]]);
+  const r = await stationLabels({ station: 'Radio Milwaukee' }, d);
+  assert.deepEqual(r.podcasts, [{ id: '718413877', name: 'This Bites', count: 2 }]);
+  assert.equal(r.scannedPodcastEpisodes, 2); assert.equal(r.scanned, 1);
+  assert.ok(!r.shows.some((s) => s.id === '718413877'), 'channels are not listed as shows');
+});

@@ -95,3 +95,12 @@ test('matches handles accented words as whole words', () => {
   assert.ok(matches(h, 'éxito')); assert.ok(matches(h, 'reunión'));
   assert.ok(!matches(h, 'xito'), 'must not match inside an accented word');
 });
+
+test('toHit marks premium audio and ranks a podcast channel with shows', () => {
+  const h = toHit({ ...doc,
+    profiles: [{ href: '/v1/profiles/podcast-episode', rels: ['type'] }, { href: '/v1/profiles/has-premium-audio', rels: ['interface'] }],
+    collections: [{ href: '/v1/documents/1019', rels: ['topic'] }, { href: '/v1/documents/510318', rels: ['podcast-channel', 'theme'] }] });
+  assert.equal(h.premium, true);
+  assert.equal(h.collections[0].id, '510318');
+  assert.equal(toHit(doc).premium, undefined, 'absent when not premium');
+});

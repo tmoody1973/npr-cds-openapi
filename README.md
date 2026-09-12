@@ -85,6 +85,8 @@ With a station set, anything from another station comes back marked *display-onl
 | "What labels does Radio Milwaukee actually use?" | Shows: La Alternativa (20), What's All This (18), Ladies First (14), In the Mix (13), DJ Takeover (10). Topics: New Music (82), Studio Milwaukee Sessions (15). Categories: Family Fun (40), On Vinyl (23), Milwaukee Music Premiere (20), Summerfest (17), HYFIN (14). From the newest 300 stories. |
 | "What changed since yesterday?" | *new* In the Mix: BG Good; *new* Ladies First: Danielle Ponder; *updated* Ladies First: Blessing Jolie, Alemeda, The Womack Sisters. Newest change first. |
 | "What's WXPN's station id?" | s715, WXPN, Philadelphia. |
+| "Newest This Bites episodes" | Radio Milwaukee's food podcast, three newest episodes with lengths and links. Your station's podcasts are in CDS too: 13 channels, about 1,975 episodes. |
+| "NPR podcasts about AI" | Episodes from Up First, Consider This and the rest, each marked *premium audio: play or link, never store*. |
 | "Get me the latest NPR newscast" | NPR News 4PM EDT, 5 minutes, published 16:10, with the stream link and a note: premium audio, play or link, never store. |
 | "/morning-prep" (a saved prompt) | The assistant runs what's-new, NPR's stories, and the newscast itself, then writes a rundown a host can read out loud, with three talk breaks. |
 | "/newsletter-draft housing" | Our housing stories then NPR's, one or two sentences each, every item linking back, audio links included. |
@@ -101,9 +103,9 @@ With a station set, anything from another station comes back marked *display-onl
 
 | Tool | Give it | Get back |
 |---|---|---|
-| `find_stories` | words, a station, a show, a topic, a date window, any mix | compact hits newest first: title, teaser, date, link, audio length and stream link, collection names |
+| `find_stories` | words, a station, a show or podcast, a topic, a date window, any mix; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio length and stream link, collection names, and a rights note when the audio is premium or belongs to another station |
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
-| `station_labels` | a station name | shows, programs, topics, tags, categories it uses, with counts |
+| `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, each marked new or updated |
 | `latest_newscast` | nothing, or `short`, or a station name | the newest newscast: time, length, stream link, and a never-store note when it is premium |
 | `find_station` | a name, call letters, or city | station id and name |
@@ -112,6 +114,8 @@ With a station set, anything from another station comes back marked *display-onl
 Two saved prompts, `morning-prep` and `newsletter-draft`, chain these tools into a workflow the assistant follows the same way every time; your MCP client lists them next to the tools. The generated tools (`queryDocuments`, `getDocument`, and the rest, one per CDS endpoint) are still there for the full document when you need it.
 
 **How it works, in order.** You ask for "Ladies First". The server looks the name up in a catalog it keeps (a lookup table, a list of names and ids it has seen before). If the name is missing, it reads your station's newest stories, notes which collections they point to, resolves the ones CDS will serve and infers the rest from the story urls, and remembers them for next time. It then asks CDS for that collection's stories, newest first. Before anything reaches the assistant it trims each 17 KB document down to the dozen fields a person needs, about 100 bytes. For a words question it also scans the newest 300 stories' titles and teasers itself and merges the two lists, so the assistant reads ten good hits instead of three hundred raw ones.
+
+**Podcasts.** Ask with `kind: podcasts`, or just say "podcast" and the assistant will. Episodes come back like stories, with the show name resolved from the podcast channel. NPR's podcast episodes all carry the premium flag, so each one says play or link, never store; a station's own podcasts usually don't. Newscasts are excluded from podcast searches and have their own tool.
 
 **What it can't do.** CDS has no text search, so word matching covers titles and teasers of the newest 300 to 1,800 stories per question, scoped to NPR unless you name a station. The catalog learns as it goes; the first question about a new tag can miss what the second finds. Content from other stations may be displayed with attribution and refreshed, not stored, and audio is always a link to NPR's or the station's servers, never a download.
 

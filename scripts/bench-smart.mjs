@@ -22,7 +22,7 @@ async function bench(label, name, args) {
   const j = JSON.parse(out);
   console.log(`\n== ${label} == 1 call, ${out.length} chars, ${Date.now() - t0} ms`);
   console.log(`searched: ${j.searched}`);
-  for (const h of j.hits) console.log(`${h.date}  ${h.title}  [${(h.collections ?? []).map((c) => c.name ?? c.id).slice(0, 3).join(", ")}]${h.audio ? `  ${Math.round(h.audio.seconds / 60)} min` : ""}${h.rights ? "  (display-only)" : ""}`);
+  for (const h of j.hits) console.log(`${h.date}  ${h.title}  [${(h.collections ?? []).map((c) => c.name ?? c.id).slice(0, 3).join(", ")}]${h.audio ? `  ${Math.round(h.audio.seconds / 60)} min` : ""}${h.rights ? `  (${h.rights.includes("premium") ? "premium" : "display-only"})` : ""}`);
   if (tokens.some((t) => out.includes(t))) throw new Error("token leaked");
 }
 await bench("Ladies First, 3 newest (was 1 call, ~20K chars)", "find_stories", { show: "Ladies First", limit: 3 });
@@ -37,9 +37,11 @@ async function show(label, name, args, render) {
 await show("check_story by station url", "check_story", { url: "https://radiomilwaukee.org/show/ladies-first/2026-09-04/blessing-jolie-20nothing-album" },
   (j) => console.log(`found=${j.found} show=${j.show} audio=${j.audio?.seconds ?? "none"}s image=${j.primaryImage} teaser=${j.teaser} problems=${JSON.stringify(j.problems)}`));
 await show("station_labels Radio Milwaukee", "station_labels", { station: "Radio Milwaukee" },
-  (j) => { console.log(`scanned ${j.scanned}`); for (const g of ["shows", "topics", "tags", "categories"]) console.log(`${g}: ${j[g].slice(0, 5).map((l) => `${l.name} (${l.count})`).join(", ")}`); });
+  (j) => { console.log(`scanned ${j.scanned} stories, ${j.scannedPodcastEpisodes} podcast episodes`); for (const g of ["shows", "podcasts", "topics", "tags", "categories"]) console.log(`${g}: ${j[g].slice(0, 5).map((l) => `${l.name} (${l.count})`).join(", ")}`); });
 await show("whats_new_since yesterday, home station", "whats_new_since", { since: new Date(Date.now() - 36e5 * 24).toISOString().slice(0, 10), limit: 5 },
   (j) => { console.log(`searched: ${j.searched}`); for (const h of j.hits) console.log(`${h.change.padEnd(7)} ${h.modified.slice(0, 16)}  ${h.title}`); });
+await bench("This Bites podcast, newest 3", "find_stories", { show: "This Bites", kind: "podcasts", limit: 3 });
+await bench("NPR podcasts about AI (premium note expected)", "find_stories", { query: "AI", kind: "podcasts", limit: 3 });
 await show("latest_newscast (NPR, long)", "latest_newscast", {},
   (j) => console.log(`${j.title} · ${Math.round(j.seconds / 60)} min · published ${j.published.slice(0, 16)} · ${j.rights ?? "no rights note"}`));
 const { prompts } = await client.listPrompts();

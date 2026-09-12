@@ -29,6 +29,8 @@ Any MCP client, as JSON:
 - "Why isn't this story on our site?" (paste the url)
 - "What labels does Radio Milwaukee actually use?"
 - "What changed since yesterday?"
+- "Newest This Bites episodes" (kind: podcasts)
+- "NPR podcasts about AI" (each marked premium: play or link, never store)
 - "Get me the latest NPR newscast"
 - "/morning-prep" and "/newsletter-draft housing" (saved prompts)
 - "What's WXPN's station id?"
@@ -37,9 +39,9 @@ Any MCP client, as JSON:
 
 | Tool | Give it | Get back |
 |---|---|---|
-| `find_stories` | words, a station, a show, a topic, a date window | compact hits newest first: title, teaser, date, link, audio, collection names |
+| `find_stories` | words, a station, a show or podcast, a topic, a date window; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio, collection names, rights note when premium or another station's |
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
-| `station_labels` | a station name | shows, programs, topics, tags, categories it uses, with counts |
+| `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, marked new or updated |
 | `latest_newscast` | nothing, `short`, or a station | newest newscast: time, length, stream link; never-store note when premium |
 | `find_station` | a name, call letters, or city | station id |
