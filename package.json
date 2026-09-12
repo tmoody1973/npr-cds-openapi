@@ -9,7 +9,7 @@
     "lint": "redocly lint openapi.yaml",
     "bundle": "redocly bundle openapi.yaml -o dist/openapi.bundled.yaml && redocly bundle openapi.yaml --dereferenced -o dist/openapi.dereferenced.yaml",
     "validate": "node scripts/validate-samples.mjs",
-    "mcp": "pnpm bundle && cortex mcp generate --output ./mcp-server && cd mcp-server && npm pkg set version=$(node -p \"require('../package.json').cdsMcpVersion\") && pnpm install && pnpm run build",
+    "mcp": "pnpm bundle && cortex mcp generate --output ./mcp-server && node scripts/after-generate.mjs && cd mcp-server && npm pkg set version=$(node -p \"require('../package.json').cdsMcpVersion\") && pnpm install && pnpm run build",
     "test:mcp": "node scripts/test-mcp.mjs"
   },
   "devDependencies": {
@@ -19,7 +19,7 @@
     "ajv-formats": "^3.0.1",
     "@cortex-docs/cli": "0.1.31"
   },
-  "cdsMcpVersion": "0.1.1",
+  "cdsMcpVersion": "0.2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/tmoody1973/npr-cds-openapi.git"
