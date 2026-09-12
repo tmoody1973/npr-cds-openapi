@@ -14,10 +14,12 @@ An OpenAPI 3.1 description of NPR's **Content Distribution Service (CDS)**, the 
 | `scripts/fetch-schemas.mjs` | Re-downloads all of the above. No token needed; those endpoints are public. |
 | `scripts/validate-samples.mjs` | Checks real CDS responses against the vendored schemas. |
 | `redocly.yaml` | Lint config. |
-| `cortex.config.yml`, `cortex-templates/` | Cortex project and the one template override (auth header). |
-| `mcp-server/` | Generated MCP server, published to npm as `npr-cds-mcp` (source committed; `dist/` and `node_modules/` are not). |
+| `cortex.config.yml`, `cortex-templates/` | Cortex project and the two template overrides (auth header and token setup; smart-tool registration). |
+| `mcp-server/` | MCP server, published to npm as `npr-cds-mcp`: generated endpoint tools plus a hand-written smart layer in `src/smart/` (source committed; `dist/` and `node_modules/` are not). |
 | `docs/` | Markdown context bundled into the docs site and the MCP server. |
-| `scripts/test-mcp.mjs` | Smoke test that drives the MCP server over stdio against live CDS. |
+| `scripts/test-mcp.mjs`, `scripts/bench-smart.mjs` | Smoke test and smart-tool benchmark, both driving the MCP server over stdio against live CDS. |
+| `scripts/after-generate.mjs` | Restores what Cortex overwrites on regeneration (see below). |
+| `docs/decisions/` | Why the server is shaped the way it is. |
 
 The document model is NPR's, not ours: `openapi.yaml` composes the vendored profile schemas (`document` + `publishable` + whatever a document lists in `profiles`) rather than re-describing them. When NPR changes a profile, re-run the fetch script and the spec follows.
 
@@ -49,42 +51,83 @@ The validator checks every document against `document` + `publishable` + each pr
 Verified 2026-09-12 against CDS production. The pagination caps, sort grammar, date-range syntax and boolean logic of repeated parameters are transcribed from NPR's querying page and encoded as constraints and patterns in the spec.
 
 
-## MCP server
+## MCP server: ask CDS questions in plain words
 
-`mcp-server/` is a Model Context Protocol server generated from the spec by [Cortex](https://github.com/cortex-docs/cortex). It gives Claude (or any MCP client) one tool per CDS operation plus the two docs pages above as context. Regenerate after changing the spec:
+`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.3.0). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
 
-```bash
-pnpm mcp          # bundle → cortex mcp generate → install → build
-pnpm test:mcp     # smoke test against live CDS (needs NPR_CDS_TOKEN in the env)
-```
+### For radio professionals
 
-**Auth.** Cortex's generated handlers send no authorization header, so `cortex-templates/mcp/handlers.ejs` is a sparse override that reads the token (environment variable first, then the file written by `setup`) and adds `Authorization: Bearer …` on the documents endpoints. `cortex-templates/mcp/main-stdio.ejs` adds the `setup` subcommand. Without a token, those tools return a readable message instead of a 401; the public profile and schema tools work regardless. The token is never written to disk by this project.
+**What you get.** An assistant that knows what's in CDS, yours and every other station's, and can answer by name. You never look up an id. You never read raw JSON.
 
-**Install for anyone, two lines.** The server is published to npm as `npr-cds-mcp`.
+**Setup, once, three lines.** You need a CDS token from NPR Member Partnership (one per person under NPR's terms) and Node.js 20 or newer.
 
 ```bash
-npx -y npr-cds-mcp setup                                 # asks for your CDS token once, saves it to ~/.config/npr-cds/token
-claude mcp add npr-cds -s user -- npx -y npr-cds-mcp     # Claude Code
+npx -y npr-cds-mcp setup                                 # pastes your token into ~/.config/npr-cds/token, readable only by you
+claude mcp add npr-cds -s user -e NPR_CDS_HOME_STATION=s921 -- npx -y npr-cds-mcp   # Claude Code; use your own station's id
 ```
 
-Claude Desktop or any JSON client:
+Claude Desktop or any other MCP client takes the same thing as JSON:
 
 ```json
-{ "mcpServers": { "npr-cds": { "command": "npx", "args": ["-y", "npr-cds-mcp"] } } }
+{ "mcpServers": { "npr-cds": { "command": "npx", "args": ["-y", "npr-cds-mcp"], "env": { "NPR_CDS_HOME_STATION": "s921" } } } }
 ```
 
-`NPR_CDS_TOKEN` in the environment takes priority over the saved file, so CI or a shared machine can still pass the token as `-e NPR_CDS_TOKEN=…` on `claude mcp add`. Tokens are one per client under NPR's terms; each person should use their own.
+`NPR_CDS_HOME_STATION` is your station's service id (Radio Milwaukee is `s921`; ask the assistant "what is KCRW's station id" and it will tell you). With it set, anything from another station comes back marked *display-only*, which is what NPR's terms require.
 
-Then ask things like "what are the three newest Ladies First episodes" or "show me the MP3 for g-s921-15973". List parameters (`collectionIds`, `profileIds`, `ids`…) are arrays; the server joins them with commas, which is CDS's OR syntax.
+**What you can ask.** These are real questions and real answers from September 12, 2026.
 
-**Smart tools (hand-written, on top of the generated ones).** `mcp-server/src/smart/` adds three task-shaped tools, registered from `main.ts` so `pnpm mcp` cannot remove them. Cortex does overwrite `mcp-server/package.json` and `tsconfig.json` on regeneration, so `scripts/after-generate.mjs` (run by `pnpm mcp`) puts back the MiniSearch dependency, the `test` script, and the test-file exclusion. `find_stories` takes free text, a station name, a show or collection name, and a date window; it resolves names for you, matches words against title and teaser server-side, and returns compact hits (id, title, teaser, date, url, audio, collection names) newest first. `find_station` and `find_collection` expose the lookups on their own. Three tools for the people who publish: `check_story` (give a story url or id, get its labels, audio, image and teaser status, and any problems in plain language), `station_labels` (the shows, topics, tags and categories a station actually uses, with counts), and `whats_new_since` (stories published or edited since a time, each marked new or updated; the same call an incremental sync needs). Station names come from NPR's public directory; collection names are learned as ids pass through and cached under `~/.cache/npr-cds/` (or `$XDG_CACHE_HOME/npr-cds/`). Set `NPR_CDS_HOME_STATION` (e.g. `s921`) and hits from any other owner carry a `rights: display-only` note, per NPR's station terms. Why this shape: [docs/decisions/001-hybrid-smart-layer.md](docs/decisions/001-hybrid-smart-layer.md).
+| You ask | What comes back |
+|---|---|
+| "What are the three newest Ladies First episodes?" | Danielle Ponder (Sep 11, 29 min), Blessing Jolie (Sep 4, 23 min), Alemeda (Aug 28, 21 min), each with teaser, link and audio. One call, 2 KB. |
+| "Latest NPR stories about AI" | Eight stories: the Anthropic and OpenAI CEOs calling to slow down, a former Anthropic researcher on rogue AI, deepfakes of late-night hosts, and so on. Found by matching the words *and* NPR's AI collections, so nothing filed only under Technology is missed. |
+| "Show me the newest KCRW stories" | Eight KCRW Reports segments with audio, newest first, each marked display-only. |
+| "Why isn't the Blessing Jolie story on Grove?" (paste the url) | *Found in CDS. Show: Ladies First. Audio attached, 23 min. Primary image: yes. Teaser: yes. No problems.* Or, when something is missing: *No audio attached in Brightspot. The story will show without a player.* |
+| "What labels does Radio Milwaukee actually use?" | Shows: La Alternativa (20), What's All This (18), Ladies First (14), In the Mix (13), DJ Takeover (10). Topics: New Music (82), Studio Milwaukee Sessions (15). Categories: Family Fun (40), On Vinyl (23), Milwaukee Music Premiere (20), Summerfest (17), HYFIN (14). From the newest 300 stories. |
+| "What changed since yesterday?" | *new* In the Mix: BG Good; *new* Ladies First: Danielle Ponder; *updated* Ladies First: Blessing Jolie, Alemeda, The Womack Sisters. Newest change first. |
+| "What's WXPN's station id?" | s715, WXPN, Philadelphia. |
 
-```sh
+**Real situations.**
+
+- *A digital editor gets a ticket: "my story isn't on the site."* Paste the url into `check_story`. Nine times out of ten the answer is a missing Show label or audio attached as a link instead of a file, and the tool says which.
+- *A news director planning a local angle.* "What has NPR published on housing this week?" then "and KCRW?" Same question, different station name.
+- *A producer's morning check.* "What changed since 8am?" shows what colleagues published or edited overnight.
+- *A developer wiring a site to CDS.* `station_labels` gives the exact label names and ids to filter on, and `whats_new_since` is the call an incremental sync loop makes.
+
+**The six tools**, for when you want to name one directly:
+
+| Tool | Give it | Get back |
+|---|---|---|
+| `find_stories` | words, a station, a show, a topic, a date window, any mix | compact hits newest first: title, teaser, date, link, audio length and stream link, collection names |
+| `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
+| `station_labels` | a station name | shows, programs, topics, tags, categories it uses, with counts |
+| `whats_new_since` | a date or time, optionally a station | what was published or edited since, each marked new or updated |
+| `find_station` | a name, call letters, or city | station id and name |
+| `find_collection` | a topic, tag, show, or program name | its id |
+
+The generated tools (`queryDocuments`, `getDocument`, and the rest, one per CDS endpoint) are still there for the full document when you need it.
+
+**How it works, in order.** You ask for "Ladies First". The server looks the name up in a catalog it keeps (a lookup table, a list of names and ids it has seen before). If the name is missing, it reads your station's newest stories, notes which collections they point to, resolves the ones CDS will serve and infers the rest from the story urls, and remembers them for next time. It then asks CDS for that collection's stories, newest first. Before anything reaches the assistant it trims each 17 KB document down to the dozen fields a person needs, about 100 bytes. For a words question it also scans the newest 300 stories' titles and teasers itself and merges the two lists, so the assistant reads ten good hits instead of three hundred raw ones.
+
+**What it can't do.** CDS has no text search, so word matching covers titles and teasers of the newest 300 to 1,800 stories per question, scoped to NPR unless you name a station. The catalog learns as it goes; the first question about a new tag can miss what the second finds. Content from other stations may be displayed with attribution and refreshed, not stored, and audio is always a link to NPR's or the station's servers, never a download.
+
+### For developers
+
+The server is generated from the spec by [Cortex](https://github.com/cortex-docs/cortex), one tool per CDS operation, plus a hand-written smart layer in `mcp-server/src/smart/` that does the name resolution, trimming and matching described above. The smart tools are registered from `main.ts`, a template override, so regeneration keeps them. Why this shape: [docs/decisions/001-hybrid-smart-layer.md](docs/decisions/001-hybrid-smart-layer.md).
+
+```bash
+pnpm mcp                          # bundle → cortex mcp generate → after-generate → install → build
 (cd mcp-server && pnpm test)      # unit tests for the smart layer (node:test, no network)
-node scripts/bench-smart.mjs      # the benchmark questions through the real server, live CDS
+pnpm test:mcp                     # smoke test against live CDS (needs a token)
+node scripts/bench-smart.mjs      # every smart tool through the real server, live CDS
 ```
 
-**Releasing a new version.** Bump `cdsMcpVersion` in `package.json`, run `pnpm mcp && pnpm test:mcp`, then `cd mcp-server && npm publish --access public`.
+**Auth.** Cortex's generated handlers send no authorization header, so `cortex-templates/mcp/handlers.ejs` is a sparse override that reads the token (environment variable first, then the file written by `setup`) and adds `Authorization: Bearer …` on the documents endpoints. `cortex-templates/mcp/main-stdio.ejs` adds the `setup` subcommand and registers the smart tools. Without a token, those tools return a readable message instead of a 401; the public profile and schema tools work regardless. The token is never written to disk by this project and never appears in tool output (the bench script checks).
+
+**Regeneration.** Cortex overwrites `mcp-server/package.json`, `tsconfig.json` and `README.md`. `scripts/after-generate.mjs`, run by `pnpm mcp`, restores the MiniSearch dependency, the `test` script, the test-file exclusion, and copies `docs/PACKAGE_README.md` over the package README so npm shows the right thing. Hand edits to generated files must be mirrored in `cortex-templates/mcp/*.ejs`.
+
+**Cache.** Station names come from NPR's public services directory (686 entries, refreshed daily). Collection names live in `~/.cache/npr-cds/collections.json` (or `$XDG_CACHE_HOME/npr-cds/`), written atomically and merged before each write so two server processes do not overwrite each other.
+
+**Releasing a new version.** Bump `cdsMcpVersion` in `package.json`, run `pnpm mcp`, `(cd mcp-server && pnpm test)`, `pnpm test:mcp`, `node scripts/bench-smart.mjs`, then `cd mcp-server && npm publish --access public`.
 
 **Why the spec is dereferenced first.** Cortex does not resolve `$ref` inside parameter schemas, so `pnpm bundle` also writes `dist/openapi.dereferenced.yaml` with every reference inlined, and `cortex.config.yml` points at that file. The source of truth stays `openapi.yaml`.
 
