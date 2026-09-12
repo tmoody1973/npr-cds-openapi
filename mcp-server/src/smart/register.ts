@@ -12,7 +12,9 @@ import { morningPrep, newsletterDraft } from './prompts';
 import { readHomeStation } from './config';
 
 const cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache'), 'npr-cds');
-const text = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data as any });
+// MCP requires structuredContent to be an object; a few tools (find_station, find_collection)
+// resolve to a plain array, so wrap it. `content` stays the raw JSON — that's what the assistant reads.
+const text = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: (Array.isArray(data) ? { results: data } : data) as any });
 const asError = (e: unknown) => ({ content: [{ type: 'text' as const, text: (e as Error).message }], isError: true });
 export const safe = <A>(fn: (a: A) => Promise<unknown>) => async (a: A) => { try { return text(await fn(a)); } catch (e) { return asError(e); } };
 

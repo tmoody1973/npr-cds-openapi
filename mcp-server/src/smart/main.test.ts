@@ -4,6 +4,8 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 // Drives `npr-cds-mcp station` as a real process with piped input, a throwaway HOME, and a
 // pre-seeded station directory so no network is needed.
@@ -36,4 +38,23 @@ test('station: blank input skips and exits 0 without writing', () => {
 test('station: end of input mid-way exits instead of hanging', () => {
   const r = run('kcrw\n');
   assert.notEqual(r.signal, 'SIGTERM', 'must not hit the timeout'); assert.equal(r.saved, undefined);
+});
+
+// Regression check for the smart layer's `_instructions` override (main-stdio.ejs, right after
+// registerSmartTools): starts the real built server and confirms the instructions it sends at
+// initialize actually reach a client, so an SDK rename of that field cannot silently drop them.
+test('server instructions reach the client at initialize, naming the home station', async () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'cds-main-'));
+  const configDir = path.join(home, '.config', 'npr-cds');
+  mkdirSync(configDir, { recursive: true });
+  writeFileSync(path.join(configDir, 'config.json'), JSON.stringify({ homeStation: 's921' }));
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [path.join(__dirname, '..', '..', 'dist', 'main.js')],
+    env: { HOME: home, XDG_CACHE_HOME: path.join(home, 'cache'), NPR_CDS_HOME_STATION: '', NPR_CDS_TOKEN: 'test-token' },
+  });
+  const client = new Client({ name: 'main-test', version: '0' });
+  await client.connect(transport);
+  assert.match(client.getInstructions() ?? '', /^Home station: s921\./);
+  await client.close();
 });

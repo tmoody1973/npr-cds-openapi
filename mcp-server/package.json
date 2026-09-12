@@ -1,6 +1,6 @@
 {
   "name": "npr-cds-mcp",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "MCP server for NPR Content Distribution Service (CDS) API",
   "main": "./dist/server.js",
   "types": "./dist/server.d.ts",
