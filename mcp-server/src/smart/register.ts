@@ -5,7 +5,9 @@ import path from 'node:path';
 import { Catalog } from './catalog';
 import { cdsQuery, fetchJson } from './cds';
 import { findStories } from './find';
-import { checkStory, stationLabels, whatsNewSince } from './producer';
+import { checkStory, latestNewscast, stationLabels, whatsNewSince } from './producer';
+import { morningPrep, newsletterDraft } from './prompts';
+import { readHomeStation } from './config';
 
 const cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache'), 'npr-cds');
 const text = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data as any });
@@ -16,7 +18,7 @@ export const safe = <A>(fn: (a: A) => Promise<unknown>) => async (a: A) => { try
 // regenerating the server from the spec cannot remove them.
 export function registerSmartTools(server: McpServer) {
   const catalog = new Catalog(fetchJson, cacheDir);
-  const deps = { cdsQuery, catalog, homeStation: process.env.NPR_CDS_HOME_STATION };
+  const deps = { cdsQuery, catalog, homeStation: readHomeStation() };
 
   server.registerTool(
     'find_stories',
@@ -86,5 +88,36 @@ export function registerSmartTools(server: McpServer) {
       annotations: { readOnlyHint: true },
     },
     safe((args) => whatsNewSince(args, deps)),
+  );
+
+  server.registerTool(
+    'latest_newscast',
+    {
+      description: 'The newest newscast: NPR\'s hourly by default (long is about 5 minutes, short about 3), or a station\'s own. Returns publish time, length, and the stream link. NPR newscasts are premium audio: play or link, never store.',
+      inputSchema: {
+        length: z.enum(['long', 'short']).optional().describe('NPR cut. Default long.'),
+        station: z.string().optional().describe('A station name for its own newscast. Default NPR.'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => latestNewscast(args, deps)),
+  );
+
+  const prompt = (text: string) => ({ messages: [{ role: 'user' as const, content: { type: 'text' as const, text } }] });
+  server.registerPrompt(
+    'morning-prep',
+    {
+      description: 'Morning show rundown: our new and updated stories, what NPR published, the newest newscast, and three talk breaks. Read-out-loud ready.',
+      argsSchema: { since: z.string().optional().describe('YYYY-MM-DD or ISO time. Default yesterday 6am.'), station: z.string().optional() },
+    },
+    (args) => prompt(morningPrep(args)),
+  );
+  server.registerPrompt(
+    'newsletter-draft',
+    {
+      description: 'Newsletter section from our stories and NPR\'s, every item linking back to its source, with audio links.',
+      argsSchema: { topic: z.string().optional(), since: z.string().optional().describe('Default the last 7 days.'), station: z.string().optional() },
+    },
+    (args) => prompt(newsletterDraft(args)),
   );
 }

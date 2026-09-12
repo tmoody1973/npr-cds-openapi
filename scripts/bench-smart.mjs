@@ -40,4 +40,10 @@ await show("station_labels Radio Milwaukee", "station_labels", { station: "Radio
   (j) => { console.log(`scanned ${j.scanned}`); for (const g of ["shows", "topics", "tags", "categories"]) console.log(`${g}: ${j[g].slice(0, 5).map((l) => `${l.name} (${l.count})`).join(", ")}`); });
 await show("whats_new_since yesterday, home station", "whats_new_since", { since: new Date(Date.now() - 36e5 * 24).toISOString().slice(0, 10), limit: 5 },
   (j) => { console.log(`searched: ${j.searched}`); for (const h of j.hits) console.log(`${h.change.padEnd(7)} ${h.modified.slice(0, 16)}  ${h.title}`); });
+await show("latest_newscast (NPR, long)", "latest_newscast", {},
+  (j) => console.log(`${j.title} · ${Math.round(j.seconds / 60)} min · published ${j.published.slice(0, 16)} · ${j.rights ?? "no rights note"}`));
+const { prompts } = await client.listPrompts();
+console.log(`\n== prompts == ${prompts.map((p) => p.name).join(", ")}`);
+const mp = await client.getPrompt({ name: "morning-prep", arguments: { since: "2026-09-11" } });
+console.log(`morning-prep text: ${mp.messages[0].content.text.length} chars, mentions whats_new_since=${mp.messages[0].content.text.includes("whats_new_since")}`);
 await client.close();

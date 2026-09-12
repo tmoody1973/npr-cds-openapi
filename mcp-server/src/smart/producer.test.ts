@@ -157,3 +157,39 @@ test('check_story only treats real npr.org hosts as npr.org urls', async () => {
   await checkStory({ url: 'https://evilnpr.org/2026/09/12/nx-s1-1/slug' }, d).catch(() => {});
   assert.equal(d.queries[0]?.get('ids'), null, 'must not extract an id from a look-alike host');
 });
+
+// ---- latest_newscast ----
+import { latestNewscast } from './producer';
+const newscast = (id: string, seconds: number, over: any = {}) => ({
+  id, title: 'NPR News: 09-12-2026 4PM EDT', publishDateTime: '2026-09-12T16:10:09-04:00',
+  owners: [{ href: 'https://organization.api.npr.org/v4/services/s1' }],
+  profiles: [{ href: '/v1/profiles/newscast', rels: ['type'] }, { href: '/v1/profiles/has-premium-audio', rels: ['interface'] }],
+  audio: [{ href: '#/assets/a', rels: ['primary', 'npr-newscast'] }],
+  assets: { a: { duration: seconds, enclosures: [{ href: `https://cdn/${id}.mp4`, type: 'audio/mp4' }, { href: `https://cdn/${id}.mp3`, type: 'audio/mpeg' }] } },
+  expirationDateTime: '2026-09-13T16:10:09-04:00', ...over,
+});
+
+test('latest_newscast returns the newest long NPR newscast with the mp3 link and a never-store note', async () => {
+  const d = deps([newscast('nx-s1-20260912-1600-short', 180), newscast('nx-s1-20260912-1600-long', 280)]);
+  const r = await latestNewscast({}, d);
+  assert.equal(d.queries[0].get('profileIds'), 'newscast');
+  assert.equal(d.queries[0].get('ownerHrefs'), 'https://organization.api.npr.org/v4/services/s1');
+  assert.equal(d.queries[0].get('sort'), 'publishDateTime:desc');
+  assert.equal(r.id, 'nx-s1-20260912-1600-long'); assert.equal(r.seconds, 280);
+  assert.equal(r.audio, 'https://cdn/nx-s1-20260912-1600-long.mp3');
+  assert.equal(r.expires, '2026-09-13T16:10:09-04:00');
+  assert.match(r.rights, /premium/i); assert.match(r.rights, /never store/i);
+});
+
+test('latest_newscast can pick the short cut, and a station', async () => {
+  const d = deps([newscast('nx-s1-20260912-1600-long', 280), newscast('nx-s1-20260912-1600-short', 180)]);
+  assert.equal((await latestNewscast({ length: 'short' }, d)).seconds, 180);
+  const d2 = deps([newscast('kcrw-1', 120, { owners: [{ href: 'https://organization.api.npr.org/v4/services/s55' }], profiles: [{ href: '/v1/profiles/newscast', rels: ['type'] }] })]);
+  const r = await latestNewscast({ station: 'KCRW' }, d2);
+  assert.equal(d2.queries[0].get('ownerHrefs'), 'https://organization.api.npr.org/v4/services/s55');
+  assert.equal(r.rights, undefined, 'non-premium audio carries no premium note');
+});
+
+test('latest_newscast with nothing published says so plainly', async () => {
+  await assert.rejects(() => latestNewscast({ station: 'KCRW' }, deps([])), /No newscast/);
+});
