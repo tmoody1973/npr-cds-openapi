@@ -63,3 +63,10 @@ test('read_story accepts a station url like check_story does', async () => {
   const r = await readStory({ url: 'https://www.radiomilwaukee.org/show/ladies-first/2026-09-11/danielle-ponder/' }, d);
   assert.equal(r.id, 'g-s921-16132'); assert.equal(d.queries[0].get('ownerHrefs'), RM);
 });
+
+test('read_story splits a plain-text transcript on single line breaks', async () => {
+  const seg = story({ id: 'nx-s1-3', layout: [], assets: {}, meta: { extensionLinks: [{ href: '/v1/documents/nx-s1-3-transcript' }] } });
+  const tr = { id: 'nx-s1-3-transcript', text: 'HOST: First line.\nGUEST: Second line.\n\nHOST: Third.', profiles: [{ href: '/v1/profiles/transcript', rels: ['type'] }] };
+  const r = await readStory({ id: 'nx-s1-3' }, deps([seg], { 'nx-s1-3-transcript': tr }));
+  assert.deepEqual(r.paragraphs, ['HOST: First line.', 'GUEST: Second line.', 'HOST: Third.']);
+});

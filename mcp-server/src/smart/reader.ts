@@ -29,7 +29,7 @@ async function transcriptParagraphs(doc: any, deps: ReaderDeps): Promise<string[
   if (!link) return [];
   const tr = (await deps.cdsGet(link.replace(/^.*\//, ''))).resources?.[0];
   if (!tr?.text) return [];
-  return String(tr.text).split(/<\/p>|\n{2,}/).map((p: string) => stripHtml(p)).filter(Boolean);
+  return String(tr.text).split(/<\/p>|<br\s*\/?>|\n+/).map((p: string) => stripHtml(p)).filter(Boolean);
 }
 
 export async function readStory(args: { id?: string; url?: string; station?: string; maxChars?: number }, deps: ReaderDeps): Promise<StoryText> {
