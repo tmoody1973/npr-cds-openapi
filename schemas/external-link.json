@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/external-link.json",
+  "title": "External Link",
+  "description": "A link to an externally-hosted document via HTTP or HTTPS",
+  "allOf": [
+    {
+      "$ref": "./link.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "href"
+      ],
+      "properties": {
+        "href": {
+          "type": "string",
+          "pattern": "^[hH][tT]{2}[pP][sS]?://.*$"
+        }
+      }
+    }
+  ]
+}

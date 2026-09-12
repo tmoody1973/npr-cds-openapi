@@ -1,0 +1,49 @@
+{
+  "name": "npr-cds-mcp",
+  "version": "0.1.1",
+  "description": "MCP server for NPR Content Distribution Service (CDS) API",
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "require": "./dist/server.js",
+      "default": "./dist/server.js"
+    }
+  },
+  "bin": {
+    "npr-cds-mcp": "dist/main.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "specs",
+    "README.md",
+    ".cortex-package.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tmoody1973/npr-cds-openapi.git"
+  },
+  "homepage": "https://github.com/tmoody1973/npr-cds-openapi",
+  "bugs": {
+    "url": "https://github.com/tmoody1973/npr-cds-openapi/issues"
+  }
+}

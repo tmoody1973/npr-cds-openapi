@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/image-gallery.json",
+  "title": "Image Gallery",
+  "description": "A image gallery document which contains sequential image document assets",
+  "allOf": [
+    {
+      "$ref": "../schemas/document-with-container-profile.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "title": {
+          "description": "A human-readable title for this image gallery",
+          "type": "string",
+          "minLength": 1
+        },
+        "introText": {
+          "description": "Introduction text for the image gallery.",
+          "type": "string",
+          "minLength": 1
+        },
+        "shouldImageCaptionsDisplayByDefault": {
+          "description": "Flag representing whether the captions for the contained images should be displayed by default",
+          "type": "boolean"
+        }
+      }
+    }
+  ]
+}

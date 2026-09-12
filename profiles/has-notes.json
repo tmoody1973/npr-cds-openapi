@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/has-notes.json",
+  "title": "Has Notes",
+  "description": "A document with notes",
+  "type": "object",
+  "required": [
+    "notes"
+  ],
+  "properties": {
+    "notes": {
+      "description": "A collection of links to note assets",
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "../schemas/asset-link.json",
+            "unevaluatedProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rels": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "editorial"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

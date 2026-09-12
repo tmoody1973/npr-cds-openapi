@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/area.json",
+  "title": "Area",
+  "description": "An area within another document that contains sequential document assets for layout purposes",
+  "allOf": [
+    {
+      "$ref": "../schemas/document-with-container-profile.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "areaType"
+      ],
+      "properties": {
+        "displayTitle": {
+          "type": "string"
+        },
+        "areaType": {
+          "type": "string",
+          "enum": [
+            "feature",
+            "navigation",
+            "zone",
+            "supplementary",
+            "overflow",
+            "sponsorship"
+          ]
+        }
+      }
+    }
+  ]
+}

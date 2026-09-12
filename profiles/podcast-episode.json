@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/podcast-episode.json",
+  "title": "Podcast Episode",
+  "description": "A single episode of a podcast",
+  "type": "object",
+  "required": [
+    "explicit",
+    "itunes",
+    "episodeType"
+  ],
+  "properties": {
+    "copyright": {
+      "description": "The copyright policy applied to this podcast episode represented in HTML",
+      "type": "string"
+    },
+    "episodeGuid": {
+      "description": "Episode GUID for purposes of generating a link",
+      "type": "string"
+    },
+    "episodePermalink": {
+      "description": "Permalink for this episode",
+      "$ref": "../schemas/link.json",
+      "unevaluatedProperties": false
+    },
+    "episodeNumber": {
+      "description": "This episode's number within the season (if season is present)",
+      "type": "integer",
+      "minimum": 0
+    },
+    "seasonNumber": {
+      "description": "This episode's season number",
+      "type": "integer",
+      "minimum": 0
+    },
+    "explicit": {
+      "description": "Indicator of if this episode contains explicit content",
+      "type": "boolean"
+    },
+    "episodeType": {
+      "description": "The type of this episode",
+      "type": "string",
+      "enum": [
+        "full",
+        "trailer",
+        "bonus"
+      ]
+    },
+    "itunes": {
+      "description": "iTunes-specific metadata about this episode",
+      "type": "object",
+      "required": [
+        "block"
+      ],
+      "properties": {
+        "block": {
+          "description": "iTunes-specific flag to block the podcast from publishing. See https://help.apple.com/itc/podcasts_connect/#/itcb54353390 for more information.",
+          "type": "boolean"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "feedEpisodeTitle": {
+      "description": "Episode title as it appears in podcast feeds",
+      "type": "string"
+    },
+    "editorialMajorUpdateDateTime": {
+      "description": "The date and time at which the content of this podcast-episode received significant editorial updates",
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/has-audio.json",
+  "title": "Has Audio",
+  "description": "A document with audio components",
+  "type": "object",
+  "required": [
+    "audio"
+  ],
+  "properties": {
+    "audio": {
+      "description": "The assets or documents representing the audio content of this document",
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "../schemas/asset-link.json"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rels": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "intro",
+                    "headline",
+                    "nprone-override",
+                    "promo",
+                    "primary",
+                    "newscast",
+                    "npr-newscast",
+                    "station-newscast",
+                    "consortium-newscast"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "minItems": 1
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/highlight.json",
+  "title": "Highlight",
+  "description": "A curated highlight of a station-owned content document, enabling network-level curation alongside the original. The document ID must carry a -highlight suffix. At ingest time, the linked document's profiles are copied into meta.profiles so that highlights appear in queries alongside their source documents.",
+  "definitions": {
+    "originalWebPageLink": {
+      "description": "A web page link that carries a 'canonical' rel, pointing to the station-owned document's web presence.",
+      "type": "object",
+      "required": [
+        "rels"
+      ],
+      "properties": {
+        "rels": {
+          "type": "array",
+          "contains": {
+            "const": "canonical"
+          }
+        }
+      }
+    },
+    "equivalentRelatedItemLink": {
+      "description": "A related-item link that carries an 'equivalent' rel, pointing to the original station-owned document.",
+      "type": "object",
+      "required": [
+        "rels"
+      ],
+      "properties": {
+        "rels": {
+          "type": "array",
+          "contains": {
+            "const": "equivalent"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "../schemas/npr-website-fields.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "webPages",
+        "relatedItems"
+      ],
+      "properties": {
+        "id": {
+          "description": "The identifier for this highlight document. Must end with the -highlight suffix.",
+          "allOf": [
+            {
+              "$ref": "../schemas/documentId.json"
+            },
+            {
+              "pattern": "^[a-z0-9-]+-highlight$"
+            }
+          ]
+        },
+        "profiles": {
+          "description": "Must include /v1/profiles/publishable (which enforces title, owners, and brandings) and /v1/profiles/internal-link (which enforces documentLink).",
+          "type": "array",
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "href": {
+                    "const": "/v1/profiles/publishable"
+                  }
+                },
+                "required": [
+                  "href"
+                ]
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "href": {
+                    "const": "/v1/profiles/internal-link"
+                  }
+                },
+                "required": [
+                  "href"
+                ]
+              }
+            }
+          ]
+        },
+        "webPages": {
+          "description": "Links to web pages associated with this highlight. Must include at least one link with the 'canonical' relationship pointing to the station-owned URL.",
+          "type": "array",
+          "minItems": 1,
+          "contains": {
+            "$ref": "#/definitions/originalWebPageLink"
+          }
+        },
+        "relatedItems": {
+          "description": "Links to documents with associative relationships. Must include at least one link with the 'equivalent' relationship pointing to the original station-owned document.",
+          "type": "array",
+          "minItems": 1,
+          "contains": {
+            "$ref": "#/definitions/equivalentRelatedItemLink"
+          }
+        }
+      }
+    }
+  ]
+}

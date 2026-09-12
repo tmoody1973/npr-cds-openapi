@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/topic.json",
+  "title": "Topic",
+  "description": "A topic document which aggregates other documents related to it",
+  "$ref": "../schemas/document-with-aggregation-profile.json"
+}

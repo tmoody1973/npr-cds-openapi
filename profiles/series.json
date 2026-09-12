@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/series.json",
+  "title": "Series",
+  "description": "A series document which aggregates other documents into a series.",
+  "$ref": "../schemas/document-with-aggregation-profile.json"
+}

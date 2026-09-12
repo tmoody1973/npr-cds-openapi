@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/publishable.json",
+  "title": "Publishable",
+  "description": "A publishable document.",
+  "definitions": {
+    "webPageLink": {
+      "allOf": [
+        {
+          "$ref": "../schemas/external-link.json"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "amazon-alexa",
+                  "apple-podcasts",
+                  "canonical",
+                  "appears-on",
+                  "google-podcasts",
+                  "npr-one",
+                  "pocket-casts",
+                  "spotify",
+                  "stitcher",
+                  "amazon-music",
+                  "iheartradio",
+                  "youtube-music"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "organizationLink": {
+      "allOf": [
+        {
+          "$ref": "../schemas/external-link.json"
+        },
+        {
+          "$ref": "../schemas/no-rels-link.json"
+        }
+      ]
+    },
+    "collectionLink": {
+      "allOf": [
+        {
+          "$ref": "../schemas/internal-document-link.json"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "blog",
+                  "category",
+                  "collection",
+                  "episode",
+                  "genre",
+                  "podcast-category",
+                  "podcast-channel",
+                  "program",
+                  "secondary",
+                  "series",
+                  "slug",
+                  "superseries",
+                  "theme",
+                  "topic",
+                  "byline",
+                  "contributor",
+                  "music-artist"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "relatedItemLink": {
+      "allOf": [
+        {
+          "$ref": "../schemas/internal-document-link.json"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "equivalent",
+                  "next",
+                  "previous",
+                  "promotional"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "noRelAssetLink": {
+      "allOf": [
+        {
+          "$ref": "../schemas/asset-link.json"
+        },
+        {
+          "$ref": "../schemas/no-rels-link.json"
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "required": [
+    "brandings",
+    "owners",
+    "title"
+  ],
+  "properties": {
+    "title": {
+      "description": "A human-readable title for this document",
+      "type": "string",
+      "minLength": 1
+    },
+    "subtitle": {
+      "description": "An additional description of the document, potentially longer than a title",
+      "type": "string",
+      "minLength": 1
+    },
+    "socialTitle": {
+      "description": "An additional description of the document, for social media",
+      "type": "string",
+      "minLength": 1
+    },
+    "teaser": {
+      "description": "A description of the content contained in this document.",
+      "type": "string"
+    },
+    "shortTeaser": {
+      "description": "A short description of the content",
+      "type": "string"
+    },
+    "contributionNotes": {
+      "description": "A description of the content contributions",
+      "type": "string"
+    },
+    "collections": {
+      "description": "List of links to collections containing this document",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/collectionLink",
+        "unevaluatedProperties": false
+      }
+    },
+    "brandings": {
+      "description": "The organization(s) whose branding should be used for this document",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/organizationLink",
+        "unevaluatedProperties": false
+      }
+    },
+    "owners": {
+      "description": "The organization(s) who have ownership of (or an association with) this document. This is used for determining how documents should show up in searches.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/organizationLink",
+        "unevaluatedProperties": false
+      }
+    },
+    "publishDateTime": {
+      "description": "The editorially-defined publish date for this document in RFC3339 format (ex: '2020-01-01T00:00:00Z')",
+      "type": "string",
+      "format": "date-time"
+    },
+    "bylines": {
+      "description": "The byline assets or documents for this document.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/noRelAssetLink",
+        "unevaluatedProperties": false
+      }
+    },
+    "corrections": {
+      "description": "The assets or documents describing corrections made to this document.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/noRelAssetLink",
+        "unevaluatedProperties": false
+      }
+    },
+    "assets": {
+      "description": "This object contains subdocuments embedded and utilized in this document. These subdocuments are stored using their ID as the parameter.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "./document.json"
+      }
+    },
+    "webPages": {
+      "description": "Links to web pages where more information about this document can be found",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/webPageLink",
+        "unevaluatedProperties": false
+      }
+    },
+    "recommendUntilDateTime": {
+      "description": "The date and time at which this document should no longer be recommended to end users. This does not, however, invalidate the content of the document.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "relatedItems": {
+      "description": "Links to documents with associative relationships with this document.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/relatedItemLink",
+        "unevaluatedProperties": false
+      }
+    },
+    "editorialLastModifiedDateTime": {
+      "description": "The date and time at which the content of this document received editorial updates",
+      "type": "string",
+      "format": "date-time"
+    },
+    "archivedDateTime": {
+      "description": "The date and time when this content became no longer actively updated, in RFC3339 format.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "profileExclusions": {
+      "description": "When considering this document for client profiles, these profiles will NOT be considered.",
+      "type": "array",
+      "uniqueItems": true,
+      "minLength": 1,
+      "items": {
+        "$ref": "../schemas/no-rels-link.json",
+        "unevaluatedProperties": false
+      }
+    }
+  }
+}

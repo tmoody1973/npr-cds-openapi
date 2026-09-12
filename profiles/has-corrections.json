@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/has-corrections.json",
+  "title": "Has Corrections",
+  "description": "A document with corrections",
+  "type": "object",
+  "required": [
+    "corrections"
+  ],
+  "properties": {
+    "corrections": {
+      "description": "a collection of links to correction assets",
+      "type": "array",
+      "uniqueItems": true,
+      "minLength": 1,
+      "items": {
+        "$ref": "../schemas/asset-link.json",
+        "unevaluatedProperties": false
+      }
+    }
+  }
+}

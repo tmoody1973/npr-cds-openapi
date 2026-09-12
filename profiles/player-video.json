@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/player-video.json",
+  "title": "Player Video",
+  "description": "A video asset representing a non-streaming video",
+  "allOf": [
+    {
+      "$ref": "../schemas/video.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "description": "The known accepted duration of this video asset in seconds",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/network-aggregation.json",
+  "title": "Network Aggregation",
+  "description": "A network-level aggregation document which requires the aggregation profile.",
+  "$ref": "../schemas/document-with-aggregation-profile.json"
+}

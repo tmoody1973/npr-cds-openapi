@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/transcript.json",
+  "title": "Transcript",
+  "description": "The transcript of an audio or video asset",
+  "type": "object",
+  "required": [
+    "text"
+  ],
+  "properties": {
+    "text": {
+      "description": "The text composing this transcript's content",
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/document.json",
+  "title": "Core Document",
+  "description": "A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.",
+  "type": "object",
+  "required": [
+    "id",
+    "profiles"
+  ],
+  "properties": {
+    "id": {
+      "description": "The identifier used to uniquely reference this document",
+      "$ref": "../schemas/documentId.json"
+    },
+    "profiles": {
+      "description": "List of profiles that this document is intended to implement",
+      "type": "array",
+      "uniqueItems": true,
+      "minLength": 1,
+      "contains": {
+        "$ref": "../schemas/type-link.json"
+      },
+      "maxContains": 1,
+      "items": {
+        "$ref": "../schemas/link.json",
+        "unevaluatedProperties": false
+      }
+    },
+    "isRestrictedToAuthorizedOrgServiceIds": {
+      "description": "Is this document restricted from distribution outside of the authorized ids listed in authorizedOrgServiceIds",
+      "type": "boolean"
+    },
+    "authorizedOrgServiceIds": {
+      "description": "List of org service IDs compatible with the Organization v4 Service. If a client's authorized services list contains any services that are also in this list, then the client will be permitted to modify or delete this document",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "meta": {
+      "description": "This section contains CSv1 metadata about this document. This section should not be altered by clients; if present, it should be returned as-is on update.",
+      "readOnly": true,
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/newscast.json",
+  "title": "Newscast",
+  "description": "A newscast",
+  "definitions": {
+    "newscastLink": {
+      "description": "A link object that contains a rel of \"newscast\"",
+      "type": "object",
+      "required": [
+        "rels"
+      ],
+      "properties": {
+        "rels": {
+          "type": "array",
+          "contains": {
+            "enum": [
+              "newscast",
+              "npr-newscast",
+              "station-newscast",
+              "consortium-newscast"
+            ]
+          }
+        }
+      }
+    },
+    "has-audio-profile": {
+      "type": "object",
+      "required": [
+        "href"
+      ],
+      "properties": {
+        "href": {
+          "type": "string",
+          "const": "/v1/profiles/has-audio"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "type": "object",
+      "required": [
+        "audio"
+      ],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "contains": {
+            "$ref": "#/definitions/has-audio-profile"
+          }
+        },
+        "audio": {
+          "description": "The assets or documents representing the audio content of this document",
+          "type": "array",
+          "minLength": 1,
+          "items": {
+            "$ref": "../schemas/link.json",
+            "unevaluatedProperties": false
+          },
+          "contains": {
+            "$ref": "#/definitions/newscastLink"
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "expirationDateTime"
+      ],
+      "properties": {
+        "expirationDateTime": {
+          "description": "The date and time that this newscast should no longer be used by any client except for archival reasons.  In the RFC3339 format (ex: '2020-01-01T00:00:00Z')",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  ]
+}

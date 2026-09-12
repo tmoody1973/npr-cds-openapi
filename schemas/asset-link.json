@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/asset-link.json",
+  "title": "Asset Link",
+  "description": "A link to a locally-embedded asset document",
+  "allOf": [
+    {
+      "$ref": "./link.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "href"
+      ],
+      "properties": {
+        "href": {
+          "description": "A URI fragment pointing to a location within the current document. This fragment should conform to JSON Pointer syntax as defined by RFC6901.",
+          "type": "string",
+          "pattern": "^#/.*$"
+        }
+      }
+    }
+  ]
+}

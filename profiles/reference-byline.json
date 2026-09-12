@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/reference-byline.json",
+  "title": "Reference Byline",
+  "description": "A byline representing a person or other entity responsible for the creation of this document. The person or entity represented by this asset should hold attributable responsibility for a portion of the content represented in this document. The data relating to the individual/entity will be provided through the links defined within",
+  "type": "object",
+  "definitions": {
+    "bylineLink": {
+      "allOf": [
+        {
+          "$ref": "../schemas/internal-document-link.json"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "biography"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "required": [
+    "bylineDocuments"
+  ],
+  "properties": {
+    "bylineDocuments": {
+      "description": "Links to internal documents where more information about this byline can be found",
+      "type": "array",
+      "minItems": 1,
+      "contains": {
+        "$ref": "#/definitions/bylineLink"
+      }
+    }
+  }
+}

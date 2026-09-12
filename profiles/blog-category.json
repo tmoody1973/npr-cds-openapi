@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/blog-category.json",
+  "title": "Blog Category",
+  "description": "A blog category document which aggregates related blogs.",
+  "$ref": "../schemas/document-with-aggregation-profile.json"
+}

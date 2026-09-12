@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/internal-document-link.json",
+  "title": "Internal Document Link",
+  "description": "A link to an internally-stored document",
+  "allOf": [
+    {
+      "$ref": "./link.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "href"
+      ],
+      "properties": {
+        "href": {
+          "type": "string",
+          "pattern": "^/v1/documents/.*$"
+        }
+      }
+    }
+  ]
+}

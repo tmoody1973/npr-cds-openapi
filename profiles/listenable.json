@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/listenable.json",
+  "title": "Listenable",
+  "description": "A document with audio components",
+  "definitions": {
+    "primaryLink": {
+      "description": "A link object that contains a rel of \"primary\"",
+      "type": "object",
+      "required": [
+        "rels"
+      ],
+      "properties": {
+        "rels": {
+          "type": "array",
+          "contains": {
+            "const": "primary"
+          }
+        }
+      }
+    },
+    "has-audio-profile": {
+      "type": "object",
+      "required": [
+        "href"
+      ],
+      "properties": {
+        "href": {
+          "type": "string",
+          "const": "/v1/profiles/has-audio"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "required": [
+    "audio"
+  ],
+  "properties": {
+    "profiles": {
+      "type": "array",
+      "contains": {
+        "$ref": "#/definitions/has-audio-profile"
+      }
+    },
+    "audio": {
+      "description": "The assets or documents representing the audio content of this document",
+      "type": "array",
+      "minLength": 1,
+      "items": {
+        "$ref": "../schemas/link.json",
+        "unevaluatedProperties": false
+      },
+      "contains": {
+        "$ref": "#/definitions/primaryLink"
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/internal-link.json",
+  "title": "Internal Link",
+  "description": "A designation that a content document within the Content Service is referenced. Intended to be used as an 'interface'.",
+  "type": "object",
+  "required": [
+    "documentLink"
+  ],
+  "properties": {
+    "documentLink": {
+      "description": "A link to a content service document",
+      "allOf": [
+        {
+          "$ref": "../schemas/internal-document-link.json"
+        },
+        {
+          "$ref": "../schemas/no-rels-link.json"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "linkText": {
+      "description": "Display text representing the document being linked to.",
+      "type": "string"
+    },
+    "linkLabel": {
+      "description": "DEPRECATED/REMOVE: A short space to highlight additional metadata attributed to the linked content.",
+      "type": "string"
+    }
+  }
+}

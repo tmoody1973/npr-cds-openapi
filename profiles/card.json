@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/card.json",
+  "title": "Card",
+  "description": "Free-form callout content item. Intended to be used as a 'type'.",
+  "allOf": [
+    {
+      "$ref": "../schemas/card.json"
+    },
+    {
+      "$ref": "../schemas/sizable-asset.json"
+    }
+  ]
+}

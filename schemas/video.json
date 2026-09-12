@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/video.json",
+  "title": "Video Asset",
+  "description": "A video asset",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "./sizable-asset.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "enclosures",
+        "isEmbeddable"
+      ],
+      "properties": {
+        "title": {
+          "description": "The title of this video asset",
+          "type": "string"
+        },
+        "caption": {
+          "description": "The caption of this video asset",
+          "type": "string"
+        },
+        "producer": {
+          "description": "The producer of this video",
+          "type": "string"
+        },
+        "provider": {
+          "description": "The provider of this video",
+          "type": "string"
+        },
+        "isEmbeddable": {
+          "description": "Is this video available for embed",
+          "type": "boolean"
+        },
+        "closedCaptions": {
+          "description": "Links to closed captions",
+          "type": "array",
+          "items": {
+            "$ref": "./external-link.json",
+            "unevaluatedProperties": false
+          }
+        },
+        "enclosures": {
+          "description": "The links to the various instances of this video",
+          "type": "array",
+          "items": {
+            "$ref": "./video-file-link.json",
+            "unevaluatedProperties": false
+          }
+        }
+      }
+    }
+  ]
+}

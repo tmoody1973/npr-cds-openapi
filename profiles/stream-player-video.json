@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/stream-player-video.json",
+  "title": "Stream Player Video",
+  "description": "A video asset representing a streaming video",
+  "allOf": [
+    {
+      "$ref": "../schemas/video.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "streamExpirationDateTime": {
+          "description": "The date and time that this stream expires, in RFC3339 full-date-time format",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  ]
+}

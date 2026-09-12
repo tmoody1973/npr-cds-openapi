@@ -1,0 +1,2289 @@
+openapi: 3.1.0
+info:
+  title: NPR Content Distribution Service (CDS) API
+  version: 1.0.0-community.1
+  summary: Community-written OpenAPI description of NPR's CDS read/write API for member stations.
+  description: |
+    The Content Distribution Service (CDS) is NPR's system for validating, ingesting and
+    distributing content between NPR and its member stations. Every piece of content is a
+    **document**: a JSON object that declares which **profiles** it implements. A profile is a
+    JSON Schema fragment (for example `story`, `audio`, `has-images`) that adds fields to the
+    base `document` shape.
+
+    This description is **not published by NPR**. It was written from NPR's public documentation
+    at <https://npr.github.io/content-distribution-service/> and from the JSON Schemas CDS itself
+    serves at `/v1/profiles/{name}` and `/v1/schemas/{name}`, which are vendored verbatim under
+    `profiles/` and `schemas/` and referenced from this file. Re-run `scripts/fetch-schemas.mjs`
+    to refresh them.
+
+    ### Authentication
+    Most endpoints need a bearer token issued by NPR Member Partnership. Send it as
+    `Authorization: Bearer <token>`. Any valid token can read all of CDS; writes are limited to
+    documents whose ID starts with the client's assigned prefix, or whose
+    `authorizedOrgServiceIds` matches the client. The profile and schema endpoints are public.
+
+    ### Query semantics on `GET /v1/documents`
+    * Comma-separated values inside one parameter are **OR**: `profileIds=story,podcast-episode`.
+    * Repeating a parameter is **AND**: `profileIds=story&profileIds=has-audio`.
+    * Different parameters are **AND**.
+    * `excluded…` parameters remove matches.
+    * Date parameters accept an RFC 3339 date-time (`2024-01-01T00:00:00Z`) or a full date
+      (`2024-01-01`), optionally as an open or closed range with `...`:
+      `2024-01-01...`, `...2024-12-31`, `2024-01-01...2024-12-31`. A bare full date is
+      interpreted in US Eastern time (`-05:00`); a range's start date means 00:00:00 and its
+      end date means 23:59:59.
+    * Results are paged with `offset` and `limit`. At most 300 per request and never past the
+      2000th result: `offset + limit <= 2000`. There is no cursor; each query is evaluated fresh.
+    * NPR's docs say the default order is `publishDateTime` descending, but in our tests
+      (September 2026) queries without `sort` came back oldest first. Always pass `sort`.
+
+    ### Document IDs
+    Numeric IDs (`1252108419`) are NPR-originated. Prefixed IDs (`nx-s1-…`, `g-s921-…`) belong to
+    the client that owns that prefix. Examples in this file use NPR's own public examples.
+  license:
+    name: MIT
+    identifier: MIT
+  contact:
+    name: npr-cds-openapi maintainers
+    url: https://github.com/tmoody1973/npr-cds-openapi
+servers:
+  - url: https://content.api.npr.org
+    description: Production
+security:
+  - bearerAuth: []
+tags:
+  - name: Documents
+    description: Read, query, create, update and delete CDS documents.
+  - name: Profiles
+    description: JSON Schemas for the standard CDS profiles. Public.
+  - name: Schemas
+    description: Shared JSON Schemas referenced by profiles. Public.
+  - name: Client profiles
+    description: Client-specific custom JSON Schemas. Public.
+  - name: Subscriptions
+    description: Webhook subscription confirmation. NPR-internal; not scoped for member stations.
+externalDocs:
+  description: Official CDS documentation
+  url: https://npr.github.io/content-distribution-service/
+paths:
+  /v1/documents:
+    get:
+      tags:
+        - Documents
+      operationId: queryDocuments
+      summary: Query documents
+      description: |
+        Return documents matching every given filter. A query with no filters returns the
+        newest documents across all of CDS. A query that matches nothing returns `200` with an
+        empty `resources` array.
+      parameters:
+        - name: ids
+          in: query
+          description: Only documents whose ID is in this list.
+          explode: false
+          schema: &ref_28
+            type: array
+            items:
+              description: NPR's document ID schema; numeric IDs are NPR-originated, prefixed IDs belong to the client owning the prefix.
+              $schema: https://json-schema.org/draft/2019-09/schema
+              $id: https://content.api.npr.org/v1/schemas/documentId.json
+              title: Document ID
+              type: string
+              pattern: ^([1-9]+[0-9]*(-[a-z0-9-]+)?|[a-z]+[a-z0-9]*-[a-z0-9-]+)$
+          example: &ref_29
+            - nx-s1-5453317
+            - '773675421'
+        - name: excludedIds
+          in: query
+          description: Documents whose ID is in this list are removed from the result.
+          explode: false
+          schema: &ref_30
+            type: array
+            items:
+              description: NPR's document ID schema; numeric IDs are NPR-originated, prefixed IDs belong to the client owning the prefix.
+              $schema: https://json-schema.org/draft/2019-09/schema
+              $id: https://content.api.npr.org/v1/schemas/documentId.json
+              title: Document ID
+              type: string
+              pattern: ^([1-9]+[0-9]*(-[a-z0-9-]+)?|[a-z]+[a-z0-9]*-[a-z0-9-]+)$
+        - name: profileIds
+          in: query
+          description: Only documents that list one of these profiles at the top level. Repeat the parameter to require several.
+          explode: false
+          schema: &ref_31
+            type: array
+            items:
+              type: string
+              description: A CDS profile or schema name, for example `story` or `link`. The authoritative profile list is `GET /v1/profiles`.
+              pattern: ^[a-z][a-z0-9-]*$
+              example: story
+          example: &ref_32
+            - story
+            - podcast-episode
+        - name: excludedProfileIds
+          in: query
+          description: Documents listing any of these profiles at the top level are removed.
+          explode: false
+          schema: &ref_33
+            type: array
+            items:
+              type: string
+              description: A CDS profile or schema name, for example `story` or `link`. The authoritative profile list is `GET /v1/profiles`.
+              pattern: ^[a-z][a-z0-9-]*$
+              example: story
+        - name: collectionIds
+          in: query
+          description: |
+            Only documents belonging to one of these collections, whether the membership is
+            unordered (the document links to the collection) or ordered (the collection's `items`
+            lists the document). Use exactly one ID here when sorting with `sort=editorial`.
+          explode: false
+          schema: &ref_34
+            type: array
+            items:
+              type: string
+          example: &ref_35
+            - '1001'
+            - '1002'
+        - name: ownerHrefs
+          in: query
+          description: |
+            Only documents whose `owners` array contains one of these Organization Service URIs.
+            This is how to scope a query to one station.
+          explode: false
+          schema: &ref_36
+            type: array
+            items:
+              type: string
+              format: uri
+          example: &ref_37
+            - https://organization.api.npr.org/v4/services/s583
+        - name: excludedOwnerHrefs
+          in: query
+          description: Documents owned by any of these services are removed.
+          explode: false
+          schema: &ref_38
+            type: array
+            items:
+              type: string
+              format: uri
+        - name: nprWebsitePaths
+          in: query
+          description: Only documents whose `nprWebsitePaths` contains one of these npr.org paths.
+          explode: false
+          schema: &ref_39
+            type: array
+            items:
+              type: string
+          example: &ref_40
+            - /podcasts/510310/npr-politics-podcast
+        - name: publishDateTime
+          in: query
+          description: Date or date range on `publishDateTime`. See the date syntax in the API description.
+          schema: &ref_41
+            type: string
+            description: |
+              An RFC 3339 date-time or full date, or a range built with `...`. Examples:
+              `2024-01-01`, `2024-01-01T00:00:00Z`, `2024-01-01...`, `...2024-12-31`,
+              `2024-01-01...2024-12-31T23:59:59Z`.
+            pattern: ^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?(\.\.\.)?(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?$
+          example: 2024-01-01...2024-12-31
+        - name: editorialLastModifiedDateTime
+          in: query
+          description: Date or date range on `editorialLastModifiedDateTime`. Useful for incremental sync.
+          schema: &ref_42
+            type: string
+            description: |
+              An RFC 3339 date-time or full date, or a range built with `...`. Examples:
+              `2024-01-01`, `2024-01-01T00:00:00Z`, `2024-01-01...`, `...2024-12-31`,
+              `2024-01-01...2024-12-31T23:59:59Z`.
+            pattern: ^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?(\.\.\.)?(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?$
+          example: 2024-06-01T00:00:00Z...
+        - name: recommendUntilDateTime
+          in: query
+          description: Date or date range on `recommendUntilDateTime`.
+          schema: &ref_43
+            type: string
+            description: |
+              An RFC 3339 date-time or full date, or a range built with `...`. Examples:
+              `2024-01-01`, `2024-01-01T00:00:00Z`, `2024-01-01...`, `...2024-12-31`,
+              `2024-01-01...2024-12-31T23:59:59Z`.
+            pattern: ^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?(\.\.\.)?(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?$
+        - name: showDates
+          in: query
+          description: The full-date subset of `DateOrRange` (no time part), matched against entries in `showDates`.
+          schema: &ref_44
+            type: string
+            pattern: ^(\d{4}-\d{2}-\d{2})?(\.\.\.)?(\d{4}-\d{2}-\d{2})?$
+          example: '2024-01-01'
+        - name: seasonNumber
+          in: query
+          description: Single season number; meaningful with `profileIds=podcast-episode`.
+          schema: &ref_45
+            type: integer
+            minimum: 0
+        - name: sort
+          in: query
+          description: |
+            `<field>[:<direction>[:<missing>]]`, comma-separated for multi-field sort, evaluated
+            left to right. Fields: `publishDateTime`, `editorialLastModifiedDateTime`, `showDates`,
+            `seasonNumber`, `episodeNumber`, and `editorial` (no direction; requires exactly one
+            `collectionIds` value; ordered items first, then the rest by `publishDateTime`).
+            Direction is `asc` or `desc`, default `desc`. `missing` is `first` or `last` and places
+            documents lacking the field, independent of direction.
+          schema: &ref_46
+            type: string
+            pattern: ^(editorial|(publishDateTime|editorialLastModifiedDateTime|showDates|seasonNumber|episodeNumber)(:(asc|desc)(:(first|last))?)?)(,(publishDateTime|editorialLastModifiedDateTime|showDates|seasonNumber|episodeNumber)(:(asc|desc)(:(first|last))?)?)*$
+          example: seasonNumber:asc:last,episodeNumber:asc
+        - name: limit
+          in: query
+          description: Documents per page. `offset + limit` must not exceed 2000.
+          schema: &ref_25
+            type: integer
+            minimum: 1
+            maximum: 300
+            default: 20
+        - name: offset
+          in: query
+          description: Zero-based start position. `offset + limit` must not exceed 2000.
+          schema: &ref_26
+            type: integer
+            minimum: 0
+            maximum: 1999
+            default: 0
+        - name: transclude
+          in: query
+          description: |
+            Pre-fetch linked documents into an `embed` field on the matching link objects.
+            Known limits documented by NPR (Feb 2024): `bylines` only resolves text bylines, and
+            `transcript` does not work as expected.
+          explode: false
+          schema: &ref_14
+            type: array
+            items:
+              type: string
+              enum:
+                - collections
+                - bylines
+                - layout
+                - transcript
+                - items
+          example: &ref_15
+            - collections
+            - layout
+      responses:
+        '200':
+          description: Matching documents. Empty `resources` when nothing matches.
+          content: &ref_16
+            application/json:
+              schema:
+                type: object
+                description: Envelope for every document read. A single-document GET returns one element.
+                required: &ref_20
+                  - resources
+                properties: &ref_21
+                  resources:
+                    type: array
+                    items:
+                      description: |
+                        A standalone CDS document as returned by the documents endpoints: the base `document`
+                        profile plus `publishable`, which every ingestable top-level document carries.
+                        Additional top-level fields depend on the other profiles listed in `profiles`
+                        (for example `audio` from `has-audio`, `images` from `has-images`, `layout` from
+                        `buildout`, `items` from `aggregation`). The named composites below cover the common
+                        cases; for any profile, compose `Document` with `./profiles/<name>.json`.
+                        Nested assets under `assets` are themselves documents keyed by ID and are referenced
+                        from `audio`, `images`, `layout` and `bylines` with `#/assets/<id>` links.
+                      allOf: &ref_19
+                        - $schema: https://json-schema.org/draft/2019-09/schema
+                          $id: https://content.api.npr.org/v1/profiles/document.json
+                          title: Core Document
+                          description: A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.
+                          type: object
+                          required: &ref_8
+                            - id
+                            - profiles
+                          properties: &ref_9
+                            id:
+                              description: The identifier used to uniquely reference this document
+                              $schema: https://json-schema.org/draft/2019-09/schema
+                              $id: https://content.api.npr.org/v1/schemas/documentId.json
+                              title: Document ID
+                              type: string
+                              pattern: ^([1-9]+[0-9]*(-[a-z0-9-]+)?|[a-z]+[a-z0-9]*-[a-z0-9-]+)$
+                            profiles:
+                              description: List of profiles that this document is intended to implement
+                              type: array
+                              uniqueItems: true
+                              minLength: 1
+                              contains:
+                                $schema: https://json-schema.org/draft/2019-09/schema
+                                $id: https://content.api.npr.org/v1/schemas/type-link.json
+                                title: Type Link
+                                description: A link defined with a mandatory 'type' rel
+                                allOf: &ref_60
+                                  - $schema: https://json-schema.org/draft/2019-09/schema
+                                    $id: https://content.api.npr.org/v1/schemas/link.json
+                                    title: Link
+                                    description: A link to an externally-defined location
+                                    type: object
+                                    required: &ref_0
+                                      - href
+                                    properties: &ref_1
+                                      href:
+                                        description: An RFC3987-compliant internationalized URI
+                                        type: string
+                                        format: iri-reference
+                                      rels:
+                                        description: An array of RFC8288-compliant link relation types
+                                        type: array
+                                        uniqueItems: true
+                                        items:
+                                          anyOf:
+                                            - type: string
+                                              format: uri
+                                            - type: string
+                                              pattern: ^[a-z][a-z0-9.-]*$
+                                      embed:
+                                        description: This attribute will be used to hold pre-fetched content from this link. If this attribute is present, it should be interpreted as the unaltered response from the link specified in the 'href' attribute.
+                                        readOnly: true
+                                  - type: object
+                                    required:
+                                      - rels
+                                    properties:
+                                      rels:
+                                        type: array
+                                        contains:
+                                          type: string
+                                          pattern: ^type$
+                                        items:
+                                          type: string
+                              maxContains: 1
+                              items:
+                                unevaluatedProperties: false
+                                $schema: https://json-schema.org/draft/2019-09/schema
+                                $id: https://content.api.npr.org/v1/schemas/link.json
+                                title: Link
+                                description: A link to an externally-defined location
+                                type: object
+                                required: *ref_0
+                                properties: *ref_1
+                            isRestrictedToAuthorizedOrgServiceIds:
+                              description: Is this document restricted from distribution outside of the authorized ids listed in authorizedOrgServiceIds
+                              type: boolean
+                            authorizedOrgServiceIds:
+                              description: List of org service IDs compatible with the Organization v4 Service. If a client's authorized services list contains any services that are also in this list, then the client will be permitted to modify or delete this document
+                              type: array
+                              uniqueItems: true
+                              items:
+                                type: string
+                            meta:
+                              description: This section contains CSv1 metadata about this document. This section should not be altered by clients; if present, it should be returned as-is on update.
+                              readOnly: true
+                              type: object
+                        - $schema: https://json-schema.org/draft/2019-09/schema
+                          $id: https://content.api.npr.org/v1/profiles/publishable.json
+                          title: Publishable
+                          description: A publishable document.
+                          definitions: &ref_66
+                            webPageLink: &ref_64
+                              allOf: &ref_10
+                                - $schema: https://json-schema.org/draft/2019-09/schema
+                                  $id: https://content.api.npr.org/v1/schemas/external-link.json
+                                  title: External Link
+                                  description: A link to an externally-hosted document via HTTP or HTTPS
+                                  allOf: &ref_2
+                                    - $schema: https://json-schema.org/draft/2019-09/schema
+                                      $id: https://content.api.npr.org/v1/schemas/link.json
+                                      title: Link
+                                      description: A link to an externally-defined location
+                                      type: object
+                                      required: *ref_0
+                                      properties: *ref_1
+                                    - type: object
+                                      required:
+                                        - href
+                                      properties:
+                                        href:
+                                          type: string
+                                          pattern: ^[hH][tT]{2}[pP][sS]?://.*$
+                                - type: object
+                                  properties:
+                                    rels:
+                                      type: array
+                                      items:
+                                        type: string
+                                        enum:
+                                          - amazon-alexa
+                                          - apple-podcasts
+                                          - canonical
+                                          - appears-on
+                                          - google-podcasts
+                                          - npr-one
+                                          - pocket-casts
+                                          - spotify
+                                          - stitcher
+                                          - amazon-music
+                                          - iheartradio
+                                          - youtube-music
+                            organizationLink: &ref_62
+                              allOf: &ref_6
+                                - $schema: https://json-schema.org/draft/2019-09/schema
+                                  $id: https://content.api.npr.org/v1/schemas/external-link.json
+                                  title: External Link
+                                  description: A link to an externally-hosted document via HTTP or HTTPS
+                                  allOf: *ref_2
+                                - $schema: https://json-schema.org/draft/2019-09/schema
+                                  $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+                                  title: No rels Link
+                                  description: A link without rels
+                                  not: &ref_4
+                                    type: object
+                                    required:
+                                      - rels
+                                  type: object
+                                  required: *ref_0
+                                  properties: *ref_1
+                            collectionLink: &ref_61
+                              allOf: &ref_5
+                                - $schema: https://json-schema.org/draft/2019-09/schema
+                                  $id: https://content.api.npr.org/v1/schemas/internal-document-link.json
+                                  title: Internal Document Link
+                                  description: A link to an internally-stored document
+                                  allOf: &ref_3
+                                    - $schema: https://json-schema.org/draft/2019-09/schema
+                                      $id: https://content.api.npr.org/v1/schemas/link.json
+                                      title: Link
+                                      description: A link to an externally-defined location
+                                      type: object
+                                      required: *ref_0
+                                      properties: *ref_1
+                                    - type: object
+                                      required:
+                                        - href
+                                      properties:
+                                        href:
+                                          type: string
+                                          pattern: ^/v1/documents/.*$
+                                - type: object
+                                  properties:
+                                    rels:
+                                      type: array
+                                      items:
+                                        type: string
+                                        enum:
+                                          - blog
+                                          - category
+                                          - collection
+                                          - episode
+                                          - genre
+                                          - podcast-category
+                                          - podcast-channel
+                                          - program
+                                          - secondary
+                                          - series
+                                          - slug
+                                          - superseries
+                                          - theme
+                                          - topic
+                                          - byline
+                                          - contributor
+                                          - music-artist
+                            relatedItemLink: &ref_65
+                              allOf: &ref_11
+                                - $schema: https://json-schema.org/draft/2019-09/schema
+                                  $id: https://content.api.npr.org/v1/schemas/internal-document-link.json
+                                  title: Internal Document Link
+                                  description: A link to an internally-stored document
+                                  allOf: *ref_3
+                                - type: object
+                                  properties:
+                                    rels:
+                                      type: array
+                                      items:
+                                        type: string
+                                        enum:
+                                          - equivalent
+                                          - next
+                                          - previous
+                                          - promotional
+                            noRelAssetLink: &ref_63
+                              allOf: &ref_7
+                                - $schema: https://json-schema.org/draft/2019-09/schema
+                                  $id: https://content.api.npr.org/v1/schemas/asset-link.json
+                                  title: Asset Link
+                                  description: A link to a locally-embedded asset document
+                                  allOf: &ref_47
+                                    - $schema: https://json-schema.org/draft/2019-09/schema
+                                      $id: https://content.api.npr.org/v1/schemas/link.json
+                                      title: Link
+                                      description: A link to an externally-defined location
+                                      type: object
+                                      required: *ref_0
+                                      properties: *ref_1
+                                    - type: object
+                                      required:
+                                        - href
+                                      properties:
+                                        href:
+                                          description: A URI fragment pointing to a location within the current document. This fragment should conform to JSON Pointer syntax as defined by RFC6901.
+                                          type: string
+                                          pattern: ^#/.*$
+                                - $schema: https://json-schema.org/draft/2019-09/schema
+                                  $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+                                  title: No rels Link
+                                  description: A link without rels
+                                  not: *ref_4
+                                  type: object
+                                  required: *ref_0
+                                  properties: *ref_1
+                          type: object
+                          required: &ref_67
+                            - brandings
+                            - owners
+                            - title
+                          properties: &ref_68
+                            title:
+                              description: A human-readable title for this document
+                              type: string
+                              minLength: 1
+                            subtitle:
+                              description: An additional description of the document, potentially longer than a title
+                              type: string
+                              minLength: 1
+                            socialTitle:
+                              description: An additional description of the document, for social media
+                              type: string
+                              minLength: 1
+                            teaser:
+                              description: A description of the content contained in this document.
+                              type: string
+                            shortTeaser:
+                              description: A short description of the content
+                              type: string
+                            contributionNotes:
+                              description: A description of the content contributions
+                              type: string
+                            collections:
+                              description: List of links to collections containing this document
+                              type: array
+                              uniqueItems: true
+                              items:
+                                unevaluatedProperties: false
+                                allOf: *ref_5
+                            brandings:
+                              description: The organization(s) whose branding should be used for this document
+                              type: array
+                              uniqueItems: true
+                              items:
+                                unevaluatedProperties: false
+                                allOf: *ref_6
+                            owners:
+                              description: The organization(s) who have ownership of (or an association with) this document. This is used for determining how documents should show up in searches.
+                              type: array
+                              minItems: 1
+                              uniqueItems: true
+                              items:
+                                unevaluatedProperties: false
+                                allOf: *ref_6
+                            publishDateTime:
+                              description: 'The editorially-defined publish date for this document in RFC3339 format (ex: ''2020-01-01T00:00:00Z'')'
+                              type: string
+                              format: date-time
+                            bylines:
+                              description: The byline assets or documents for this document.
+                              type: array
+                              items:
+                                unevaluatedProperties: false
+                                allOf: *ref_7
+                            corrections:
+                              description: The assets or documents describing corrections made to this document.
+                              type: array
+                              items:
+                                unevaluatedProperties: false
+                                allOf: *ref_7
+                            assets:
+                              description: This object contains subdocuments embedded and utilized in this document. These subdocuments are stored using their ID as the parameter.
+                              type: object
+                              additionalProperties:
+                                $schema: https://json-schema.org/draft/2019-09/schema
+                                $id: https://content.api.npr.org/v1/profiles/document.json
+                                title: Core Document
+                                description: A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.
+                                type: object
+                                required: *ref_8
+                                properties: *ref_9
+                            webPages:
+                              description: Links to web pages where more information about this document can be found
+                              type: array
+                              items:
+                                unevaluatedProperties: false
+                                allOf: *ref_10
+                            recommendUntilDateTime:
+                              description: The date and time at which this document should no longer be recommended to end users. This does not, however, invalidate the content of the document.
+                              type: string
+                              format: date-time
+                            relatedItems:
+                              description: Links to documents with associative relationships with this document.
+                              type: array
+                              uniqueItems: true
+                              items:
+                                unevaluatedProperties: false
+                                allOf: *ref_11
+                            editorialLastModifiedDateTime:
+                              description: The date and time at which the content of this document received editorial updates
+                              type: string
+                              format: date-time
+                            archivedDateTime:
+                              description: The date and time when this content became no longer actively updated, in RFC3339 format.
+                              type: string
+                              format: date-time
+                            profileExclusions:
+                              description: When considering this document for client profiles, these profiles will NOT be considered.
+                              type: array
+                              uniqueItems: true
+                              minLength: 1
+                              items:
+                                unevaluatedProperties: false
+                                $schema: https://json-schema.org/draft/2019-09/schema
+                                $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+                                title: No rels Link
+                                description: A link without rels
+                                not: *ref_4
+                                type: object
+                                required: *ref_0
+                                properties: *ref_1
+        '400':
+          description: Invalid parameter or body. Details in `meta.messages`.
+          content: &ref_17
+            application/json:
+              schema:
+                type: object
+                properties: &ref_12
+                  meta:
+                    type: object
+                    properties:
+                      messages:
+                        type: array
+                        items:
+                          type: string
+                example: &ref_13
+                  meta:
+                    messages:
+                      - 2022-01-01...2022-12-311 are invalid showDates
+              example:
+                meta:
+                  messages:
+                    - badQueryParam is an unexpected query parameter
+        '401':
+          description: Missing or unrecognized bearer token.
+          content: &ref_18
+            application/json:
+              schema:
+                type: object
+                properties: *ref_12
+                example: *ref_13
+        '503':
+          description: Transient. NPR asks clients to retry later; no `Retry-After` header is documented.
+  /v1/documents/{documentId}:
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        description: Document ID. Numeric for NPR-originated documents, prefixed for station documents.
+        schema: &ref_27
+          description: NPR's document ID schema; numeric IDs are NPR-originated, prefixed IDs belong to the client owning the prefix.
+          $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/schemas/documentId.json
+          title: Document ID
+          type: string
+          pattern: ^([1-9]+[0-9]*(-[a-z0-9-]+)?|[a-z]+[a-z0-9]*-[a-z0-9-]+)$
+        example: nx-s1-5453317
+    get:
+      tags:
+        - Documents
+      operationId: getDocument
+      summary: Get one document
+      description: |
+        Return a single document by ID. The body uses the same `resources` envelope as a query,
+        holding exactly one document. `transclude` is the only query parameter accepted here.
+      parameters:
+        - name: transclude
+          in: query
+          description: |
+            Pre-fetch linked documents into an `embed` field on the matching link objects.
+            Known limits documented by NPR (Feb 2024): `bylines` only resolves text bylines, and
+            `transcript` does not work as expected.
+          explode: false
+          schema: *ref_14
+          example: *ref_15
+      responses:
+        '200':
+          description: Matching documents. Empty `resources` when nothing matches.
+          content: *ref_16
+        '400':
+          description: Invalid parameter or body. Details in `meta.messages`.
+          content: *ref_17
+        '401':
+          description: Missing or unrecognized bearer token.
+          content: *ref_18
+        '404':
+          description: No document, profile or schema with that ID.
+          content: &ref_23
+            application/json:
+              schema:
+                type: object
+                properties: *ref_12
+                example: *ref_13
+        '503':
+          description: Transient. NPR asks clients to retry later; no `Retry-After` header is documented.
+    put:
+      tags:
+        - Documents
+      operationId: putDocument
+      summary: Create or update a document
+      description: |
+        Create the document if the ID is new, otherwise replace it. The ID in the path must
+        start with the client's assigned document prefix, or the existing document's
+        `authorizedOrgServiceIds` must include one of the client's services. The body must
+        validate against every profile it lists. `meta` is read-only; if present it must be
+        returned as received.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: |
+                A standalone CDS document as returned by the documents endpoints: the base `document`
+                profile plus `publishable`, which every ingestable top-level document carries.
+                Additional top-level fields depend on the other profiles listed in `profiles`
+                (for example `audio` from `has-audio`, `images` from `has-images`, `layout` from
+                `buildout`, `items` from `aggregation`). The named composites below cover the common
+                cases; for any profile, compose `Document` with `./profiles/<name>.json`.
+                Nested assets under `assets` are themselves documents keyed by ID and are referenced
+                from `audio`, `images`, `layout` and `bylines` with `#/assets/<id>` links.
+              allOf: *ref_19
+      responses:
+        '200':
+          description: Document updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Envelope for every document read. A single-document GET returns one element.
+                required: *ref_20
+                properties: *ref_21
+        '201':
+          description: Document created.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Envelope for every document read. A single-document GET returns one element.
+                required: *ref_20
+                properties: *ref_21
+        '400':
+          description: Invalid parameter or body. Details in `meta.messages`.
+          content: *ref_17
+        '401':
+          description: Missing or unrecognized bearer token.
+          content: *ref_18
+        '403':
+          description: The token is valid but not allowed to write this document.
+          content: &ref_22
+            application/json:
+              schema:
+                type: object
+                properties: *ref_12
+                example: *ref_13
+    delete:
+      tags:
+        - Documents
+      operationId: deleteDocument
+      summary: Delete a document
+      description: Same write authorization rules as `PUT`.
+      responses:
+        '204':
+          description: Document deleted.
+        '401':
+          description: Missing or unrecognized bearer token.
+          content: *ref_18
+        '403':
+          description: The token is valid but not allowed to write this document.
+          content: *ref_22
+        '404':
+          description: No document, profile or schema with that ID.
+          content: *ref_23
+  /v1/profiles:
+    get:
+      tags:
+        - Profiles
+      operationId: listProfiles
+      summary: List all profiles
+      description: Public. Returns a bare array of links, not the `resources` envelope.
+      security: []
+      responses:
+        '200':
+          description: Links to every current profile schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: NPR's shared link object. `href` may be an absolute URL, a CDS path such as `/v1/documents/1002`, or a fragment such as `#/assets/1003` pointing into the same document's `assets`.
+                  $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/link.json
+                  title: Link
+                  type: object
+                  required: *ref_0
+                  properties: *ref_1
+              example:
+                - href: /v1/profiles/aggregation
+                - href: /v1/profiles/audio
+                - href: /v1/profiles/story
+  /v1/profiles/{profileName}:
+    get:
+      tags:
+        - Profiles
+      operationId: getProfile
+      summary: Get one profile's JSON Schema
+      description: |
+        Public. Returns the JSON Schema (draft 2019-09) a document must satisfy to claim this
+        profile. The same schemas are vendored under `profiles/` in this repository.
+      security: []
+      parameters:
+        - name: profileName
+          in: path
+          required: true
+          description: Profile name, for example `story`, `audio`, `has-images`. See `GET /v1/profiles` for the full list.
+          schema:
+            type: string
+            description: A CDS profile or schema name, for example `story` or `link`. The authoritative profile list is `GET /v1/profiles`.
+            pattern: ^[a-z][a-z0-9-]*$
+            example: story
+          example: story
+      responses:
+        '200':
+          description: The profile schema.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A JSON Schema document (draft 2019-09) as served by CDS.
+                additionalProperties: true
+                example: &ref_24
+                  $schema: https://json-schema.org/draft/2019-09/schema#
+                  $id: /v1/profiles/story
+                  title: Story
+                  type: object
+        '404':
+          description: No document, profile or schema with that ID.
+          content: *ref_23
+  /v1/schemas/{schemaName}:
+    get:
+      tags:
+        - Schemas
+      operationId: getSchema
+      summary: Get a shared JSON Schema
+      description: |
+        Public. Shared building blocks that profiles reference, such as `link`, `documentId`,
+        `sizable-asset`. Vendored under `schemas/` in this repository.
+      security: []
+      parameters:
+        - name: schemaName
+          in: path
+          required: true
+          schema:
+            type: string
+            description: A CDS profile or schema name, for example `story` or `link`. The authoritative profile list is `GET /v1/profiles`.
+            pattern: ^[a-z][a-z0-9-]*$
+            example: story
+          example: link
+      responses:
+        '200':
+          description: The schema.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A JSON Schema document (draft 2019-09) as served by CDS.
+                additionalProperties: true
+                example: *ref_24
+        '400':
+          description: The docs show a `400` with `Failed to load schema` for an unknown name.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: *ref_12
+                example: *ref_13
+        '404':
+          description: No document, profile or schema with that ID.
+          content: *ref_23
+  /v1/client-profiles:
+    get:
+      tags:
+        - Client profiles
+      operationId: listClientProfiles
+      summary: List client profiles
+      description: Public. Custom JSON Schemas registered by individual clients.
+      security: []
+      parameters:
+        - name: limit
+          in: query
+          description: Documents per page. `offset + limit` must not exceed 2000.
+          schema: *ref_25
+        - name: offset
+          in: query
+          description: Zero-based start position. `offset + limit` must not exceed 2000.
+          schema: *ref_26
+      responses:
+        '200':
+          description: A page of client profile schemas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - resources
+                properties:
+                  resources:
+                    type: array
+                    items:
+                      type: object
+                      description: A JSON Schema document (draft 2019-09) as served by CDS.
+                      additionalProperties: true
+                      example: *ref_24
+        '400':
+          description: Invalid parameter or body. Details in `meta.messages`.
+          content: *ref_17
+  /v1/client-profiles/{profileName}:
+    get:
+      tags:
+        - Client profiles
+      operationId: getClientProfile
+      summary: Get one client profile
+      security: []
+      parameters:
+        - name: profileName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The client profile schema.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A JSON Schema document (draft 2019-09) as served by CDS.
+                additionalProperties: true
+                example: *ref_24
+        '404':
+          description: No document, profile or schema with that ID.
+          content: *ref_23
+  /v1/subscriptions/confirmations:
+    post:
+      tags:
+        - Subscriptions
+      operationId: confirmSubscription
+      summary: Confirm a notification subscription
+      description: |
+        NPR-internal. A client's webhook receives a `SubscriptionConfirmation` message when a
+        subscription is created and must forward that body here unmodified. Ongoing
+        notifications carry `type` of `document.created`, `document.updated` or
+        `document.deleted`; see the official Notifications page.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: The confirmation message exactly as received by the webhook.
+              properties:
+                Type:
+                  type: string
+                  const: SubscriptionConfirmation
+              additionalProperties: true
+      responses:
+        '200':
+          description: Subscription confirmed.
+        '400':
+          description: Invalid parameter or body. Details in `meta.messages`.
+          content: *ref_17
+        '401':
+          description: Missing or unrecognized bearer token.
+          content: *ref_18
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token issued by NPR Member Partnership. One token per client.
+  parameters:
+    documentId:
+      name: documentId
+      in: path
+      required: true
+      description: Document ID. Numeric for NPR-originated documents, prefixed for station documents.
+      schema: *ref_27
+      example: nx-s1-5453317
+    ids:
+      name: ids
+      in: query
+      description: Only documents whose ID is in this list.
+      explode: false
+      schema: *ref_28
+      example: *ref_29
+    excludedIds:
+      name: excludedIds
+      in: query
+      description: Documents whose ID is in this list are removed from the result.
+      explode: false
+      schema: *ref_30
+    profileIds:
+      name: profileIds
+      in: query
+      description: Only documents that list one of these profiles at the top level. Repeat the parameter to require several.
+      explode: false
+      schema: *ref_31
+      example: *ref_32
+    excludedProfileIds:
+      name: excludedProfileIds
+      in: query
+      description: Documents listing any of these profiles at the top level are removed.
+      explode: false
+      schema: *ref_33
+    collectionIds:
+      name: collectionIds
+      in: query
+      description: |
+        Only documents belonging to one of these collections, whether the membership is
+        unordered (the document links to the collection) or ordered (the collection's `items`
+        lists the document). Use exactly one ID here when sorting with `sort=editorial`.
+      explode: false
+      schema: *ref_34
+      example: *ref_35
+    ownerHrefs:
+      name: ownerHrefs
+      in: query
+      description: |
+        Only documents whose `owners` array contains one of these Organization Service URIs.
+        This is how to scope a query to one station.
+      explode: false
+      schema: *ref_36
+      example: *ref_37
+    excludedOwnerHrefs:
+      name: excludedOwnerHrefs
+      in: query
+      description: Documents owned by any of these services are removed.
+      explode: false
+      schema: *ref_38
+    nprWebsitePaths:
+      name: nprWebsitePaths
+      in: query
+      description: Only documents whose `nprWebsitePaths` contains one of these npr.org paths.
+      explode: false
+      schema: *ref_39
+      example: *ref_40
+    publishDateTime:
+      name: publishDateTime
+      in: query
+      description: Date or date range on `publishDateTime`. See the date syntax in the API description.
+      schema: *ref_41
+      example: 2024-01-01...2024-12-31
+    editorialLastModifiedDateTime:
+      name: editorialLastModifiedDateTime
+      in: query
+      description: Date or date range on `editorialLastModifiedDateTime`. Useful for incremental sync.
+      schema: *ref_42
+      example: 2024-06-01T00:00:00Z...
+    recommendUntilDateTime:
+      name: recommendUntilDateTime
+      in: query
+      description: Date or date range on `recommendUntilDateTime`.
+      schema: *ref_43
+    showDates:
+      name: showDates
+      in: query
+      description: The full-date subset of `DateOrRange` (no time part), matched against entries in `showDates`.
+      schema: *ref_44
+      example: '2024-01-01'
+    seasonNumber:
+      name: seasonNumber
+      in: query
+      description: Single season number; meaningful with `profileIds=podcast-episode`.
+      schema: *ref_45
+    sort:
+      name: sort
+      in: query
+      description: |
+        `<field>[:<direction>[:<missing>]]`, comma-separated for multi-field sort, evaluated
+        left to right. Fields: `publishDateTime`, `editorialLastModifiedDateTime`, `showDates`,
+        `seasonNumber`, `episodeNumber`, and `editorial` (no direction; requires exactly one
+        `collectionIds` value; ordered items first, then the rest by `publishDateTime`).
+        Direction is `asc` or `desc`, default `desc`. `missing` is `first` or `last` and places
+        documents lacking the field, independent of direction.
+      schema: *ref_46
+      example: seasonNumber:asc:last,episodeNumber:asc
+    limit:
+      name: limit
+      in: query
+      description: Documents per page. `offset + limit` must not exceed 2000.
+      schema: *ref_25
+    offset:
+      name: offset
+      in: query
+      description: Zero-based start position. `offset + limit` must not exceed 2000.
+      schema: *ref_26
+    transclude:
+      name: transclude
+      in: query
+      description: |
+        Pre-fetch linked documents into an `embed` field on the matching link objects.
+        Known limits documented by NPR (Feb 2024): `bylines` only resolves text bylines, and
+        `transcript` does not work as expected.
+      explode: false
+      schema: *ref_14
+      example: *ref_15
+  responses:
+    DocumentsOk:
+      description: Matching documents. Empty `resources` when nothing matches.
+      content: *ref_16
+    BadRequest:
+      description: Invalid parameter or body. Details in `meta.messages`.
+      content: *ref_17
+    Unauthorized:
+      description: Missing or unrecognized bearer token.
+      content: *ref_18
+    Forbidden:
+      description: The token is valid but not allowed to write this document.
+      content: *ref_22
+    NotFound:
+      description: No document, profile or schema with that ID.
+      content: *ref_23
+    ServiceUnavailable:
+      description: Transient. NPR asks clients to retry later; no `Retry-After` header is documented.
+  schemas:
+    Link:
+      description: NPR's shared link object. `href` may be an absolute URL, a CDS path such as `/v1/documents/1002`, or a fragment such as `#/assets/1003` pointing into the same document's `assets`.
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/link.json
+      title: Link
+      type: object
+      required: *ref_0
+      properties: *ref_1
+    DocumentId:
+      description: NPR's document ID schema; numeric IDs are NPR-originated, prefixed IDs belong to the client owning the prefix.
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/documentId.json
+      title: Document ID
+      type: string
+      pattern: ^([1-9]+[0-9]*(-[a-z0-9-]+)?|[a-z]+[a-z0-9]*-[a-z0-9-]+)$
+    NameSlug:
+      type: string
+      description: A CDS profile or schema name, for example `story` or `link`. The authoritative profile list is `GET /v1/profiles`.
+      pattern: ^[a-z][a-z0-9-]*$
+      example: story
+    DateOrRange:
+      type: string
+      description: |
+        An RFC 3339 date-time or full date, or a range built with `...`. Examples:
+        `2024-01-01`, `2024-01-01T00:00:00Z`, `2024-01-01...`, `...2024-12-31`,
+        `2024-01-01...2024-12-31T23:59:59Z`.
+      pattern: ^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?(\.\.\.)?(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?$
+    Document:
+      description: |
+        A standalone CDS document as returned by the documents endpoints: the base `document`
+        profile plus `publishable`, which every ingestable top-level document carries.
+        Additional top-level fields depend on the other profiles listed in `profiles`
+        (for example `audio` from `has-audio`, `images` from `has-images`, `layout` from
+        `buildout`, `items` from `aggregation`). The named composites below cover the common
+        cases; for any profile, compose `Document` with `./profiles/<name>.json`.
+        Nested assets under `assets` are themselves documents keyed by ID and are referenced
+        from `audio`, `images`, `layout` and `bylines` with `#/assets/<id>` links.
+      allOf: *ref_19
+    StoryDocument:
+      description: A story with rendering and layout fields.
+      allOf:
+        - description: |
+            A standalone CDS document as returned by the documents endpoints: the base `document`
+            profile plus `publishable`, which every ingestable top-level document carries.
+            Additional top-level fields depend on the other profiles listed in `profiles`
+            (for example `audio` from `has-audio`, `images` from `has-images`, `layout` from
+            `buildout`, `items` from `aggregation`). The named composites below cover the common
+            cases; for any profile, compose `Document` with `./profiles/<name>.json`.
+            Nested assets under `assets` are themselves documents keyed by ID and are referenced
+            from `audio`, `images`, `layout` and `bylines` with `#/assets/<id>` links.
+          allOf: *ref_19
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/story.json
+          title: Story
+          description: A publishable story document
+          type: object
+          properties: &ref_69
+            editorialMajorUpdateDateTime:
+              description: The date and time at which the content of this story received significant editorial updates
+              type: string
+              format: date-time
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/renderable.json
+          title: Renderable
+          description: Renderable document content for visual display/presentation
+          definitions: &ref_73
+            canonicalLink: &ref_72
+              description: A link object that contains a rel of "canonical"
+              type: object
+              required: &ref_49
+                - rels
+              properties: &ref_50
+                rels:
+                  type: array
+                  contains:
+                    const: canonical
+          allOf: &ref_74
+            - $schema: https://json-schema.org/draft/2019-09/schema
+              $id: https://content.api.npr.org/v1/schemas/has-layout.json
+              title: Has Layout
+              description: A document with a layout array for visual presentation
+              definitions: &ref_53
+                layout-link: &ref_70
+                  description: A link for use in the 'layout' array with valid rel values
+                  type: object
+                  properties: &ref_48
+                    rels:
+                      type: array
+                      items:
+                        type: string
+                        enum:
+                          - zone-topareastories
+                          - subnav
+                          - footer
+                          - rail
+                          - alt
+              type: object
+              required: &ref_54
+                - layout
+              properties: &ref_55
+                layout:
+                  description: The assets or documents intended to make up the layout of this document.
+                  type: array
+                  items:
+                    allOf:
+                      - $schema: https://json-schema.org/draft/2019-09/schema
+                        $id: https://content.api.npr.org/v1/schemas/asset-link.json
+                        title: Asset Link
+                        description: A link to a locally-embedded asset document
+                        allOf: *ref_47
+                      - description: A link for use in the 'layout' array with valid rel values
+                        type: object
+                        properties: *ref_48
+            - $schema: https://json-schema.org/draft/2019-09/schema
+              $id: https://content.api.npr.org/v1/schemas/npr-website-fields.json
+              title: NPR Website Fields
+              description: NPR website metadata fields for linking content to the NPR website
+              type: object
+              properties: &ref_71
+                nprWebsitePath:
+                  description: Relative path to the content resource on the NPR website
+                  type: string
+                nprDisplayType:
+                  description: A reference to the type of rendering directive used by NPR for displaying this content
+                  type: string
+                  enum:
+                    - AboutPageMultimediaStory
+                    - AboutPageStory
+                    - AggAbout
+                    - AggBookGenre
+                    - AggNews
+                    - Bio
+                    - BlogAboutCategory
+                    - BlogAboutIndex
+                    - BlogAboutMultimediaStory
+                    - BlogAboutStory
+                    - BlogLiveNewsStory
+                    - BlogLiveNewsMultimediaStory
+                    - BlogLiveMusicStory
+                    - BlogLiveMusicMultimediaStory
+                    - BlogMusicCategory
+                    - BlogMusicIndex
+                    - BlogMusicLiveIndex
+                    - BlogMusicMultimediaStory
+                    - BlogMusicStory
+                    - BlogNewsCategory
+                    - BlogNewsIndex
+                    - BlogNewsLiveIndex
+                    - BlogNewsMultimediaStory
+                    - BlogNewsStory
+                    - BookAuthor
+                    - BookBestseller
+                    - BookLanding
+                    - BookStory
+                    - EventMusicAgg
+                    - HomePage
+                    - MusicAgg
+                    - MusicArtist
+                    - MusicHomepage
+                    - MusicMultimedia
+                    - MusicSongsStreamPlaylist
+                    - MusicStory
+                    - MusicStream
+                    - NewsBioAgg
+                    - NewsEpisode
+                    - NewsMultimedia
+                    - NewsNoRender
+                    - NewsStory
+                    - NewsSuperseries
+                    - PodcastAgg
+                    - PodcastChannel
+                    - PodcastHome
+                    - ProgramEpisode
+                    - ProgramInterview
+                    - ProgramMagazine
+                    - ShowEpisode
+                    - SponsorContentStory
+            - type: object
+              required:
+                - webPages
+              properties:
+                webPages:
+                  description: Links to web pages where more information about this document can be found
+                  type: array
+                  minItems: 1
+                  contains:
+                    description: A link object that contains a rel of "canonical"
+                    type: object
+                    required: *ref_49
+                    properties: *ref_50
+                seoTitle:
+                  description: A short title used for search engine optimization
+                  type: string
+                robotsNoIndex:
+                  description: Setting for disallowing indexing by robots
+                  type: boolean
+                autoRefreshInterval:
+                  description: Number of seconds to wait before auto-refreshing the web page
+                  type: integer
+                  minimum: 1
+                featuredAreaType:
+                  description: A reference to the type of template for displaying this content. The name of the template should indicate how many items should be displayed in the featured area, and in what configuration.
+                  type: string
+                  enum:
+                    - zero
+                    - one
+                    - two
+                    - three
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/buildout.json
+          title: Buildout
+          description: A document that should have a non-empty layout property, or one that implements one or more 'built out' profiles
+          definitions: &ref_76
+            buildoutProfileLink: &ref_75
+              description: A profile link that can represent a built out document
+              type: object
+              required: &ref_51
+                - href
+              properties: &ref_52
+                href:
+                  type: string
+                  enum:
+                    - /v1/profiles/blog
+                    - /v1/profiles/series
+                    - /v1/profiles/collection
+                    - /v1/profiles/topic
+                    - /v1/profiles/podcast-category
+                    - /v1/profiles/podcast-channel
+                    - /v1/profiles/biography
+                    - /v1/profiles/program
+          anyOf: &ref_77
+            - type: object
+              required:
+                - profiles
+              properties:
+                profiles:
+                  description: List of profiles that this document is intended to implement
+                  type: array
+                  contains:
+                    description: A profile link that can represent a built out document
+                    type: object
+                    required: *ref_51
+                    properties: *ref_52
+            - allOf:
+                - type: object
+                  required:
+                    - layout
+                  properties:
+                    layout:
+                      description: Links to the assets intended to make up the layout of this document.
+                      type: array
+                      minItems: 1
+                - $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/has-layout.json
+                  title: Has Layout
+                  description: A document with a layout array for visual presentation
+                  definitions: *ref_53
+                  type: object
+                  required: *ref_54
+                  properties: *ref_55
+    AggregationDocument:
+      description: A collection-like document with an ordered `items` list (series, topic, tag, program…).
+      allOf: &ref_56
+        - description: |
+            A standalone CDS document as returned by the documents endpoints: the base `document`
+            profile plus `publishable`, which every ingestable top-level document carries.
+            Additional top-level fields depend on the other profiles listed in `profiles`
+            (for example `audio` from `has-audio`, `images` from `has-images`, `layout` from
+            `buildout`, `items` from `aggregation`). The named composites below cover the common
+            cases; for any profile, compose `Document` with `./profiles/<name>.json`.
+            Nested assets under `assets` are themselves documents keyed by ID and are referenced
+            from `audio`, `images`, `layout` and `bylines` with `#/assets/<id>` links.
+          allOf: *ref_19
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/aggregation.json
+          title: Aggregation
+          description: An object that can have an ordered list of links to documents
+          type: object
+          required: &ref_78
+            - items
+          properties: &ref_79
+            items:
+              description: A prioritized list of links to documents that make up this aggregation
+              type: array
+              items:
+                allOf:
+                  - $schema: https://json-schema.org/draft/2019-09/schema
+                    $id: https://content.api.npr.org/v1/schemas/internal-document-link.json
+                    title: Internal Document Link
+                    description: A link to an internally-stored document
+                    allOf: *ref_3
+                  - $schema: https://json-schema.org/draft/2019-09/schema
+                    $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+                    title: No rels Link
+                    description: A link without rels
+                    not: *ref_4
+                    type: object
+                    required: *ref_0
+                    properties: *ref_1
+                unevaluatedProperties: false
+              maxItems: 100
+            relatedNewsletterIds:
+              description: Indicate which newsletter(s), if any, with which this aggregation is associated.   The string can be used with other APIs that handle NPR newsletters.
+              type: array
+              items:
+                type: string
+                enum:
+                  - money
+                  - invisibilia
+                  - news
+                  - ed
+                  - politics
+                  - code-switch
+                  - goats-and-soda
+                  - books
+                  - music
+                  - pop-culture
+                  - health
+                  - public-editor
+                  - npr-extra
+                  - student-podcast-challenge
+                  - life-kit
+                  - life-kit-sleep
+                  - the-new-normal
+                  - best-of-npr
+                  - breaking-news
+                  - scotts-thoughts
+                  - tiny-desk-contest
+                  - body-electric
+                  - stress-less
+                  - sea-camp
+                  - pod-club
+                  - financial-reset
+                  - strength-training
+                  - winter-olympics
+                  - indicator
+                  - food-budget
+                  - life-kit-skincare
+                  - only-on-npr
+              minLength: 1
+    PodcastEpisodeDocument:
+      allOf:
+        - description: |
+            A standalone CDS document as returned by the documents endpoints: the base `document`
+            profile plus `publishable`, which every ingestable top-level document carries.
+            Additional top-level fields depend on the other profiles listed in `profiles`
+            (for example `audio` from `has-audio`, `images` from `has-images`, `layout` from
+            `buildout`, `items` from `aggregation`). The named composites below cover the common
+            cases; for any profile, compose `Document` with `./profiles/<name>.json`.
+            Nested assets under `assets` are themselves documents keyed by ID and are referenced
+            from `audio`, `images`, `layout` and `bylines` with `#/assets/<id>` links.
+          allOf: *ref_19
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/podcast-episode.json
+          title: Podcast Episode
+          description: A single episode of a podcast
+          type: object
+          required: &ref_80
+            - explicit
+            - itunes
+            - episodeType
+          properties: &ref_81
+            copyright:
+              description: The copyright policy applied to this podcast episode represented in HTML
+              type: string
+            episodeGuid:
+              description: Episode GUID for purposes of generating a link
+              type: string
+            episodePermalink:
+              description: Permalink for this episode
+              unevaluatedProperties: false
+              $schema: https://json-schema.org/draft/2019-09/schema
+              $id: https://content.api.npr.org/v1/schemas/link.json
+              title: Link
+              type: object
+              required: *ref_0
+              properties: *ref_1
+            episodeNumber:
+              description: This episode's number within the season (if season is present)
+              type: integer
+              minimum: 0
+            seasonNumber:
+              description: This episode's season number
+              type: integer
+              minimum: 0
+            explicit:
+              description: Indicator of if this episode contains explicit content
+              type: boolean
+            episodeType:
+              description: The type of this episode
+              type: string
+              enum:
+                - full
+                - trailer
+                - bonus
+            itunes:
+              description: iTunes-specific metadata about this episode
+              type: object
+              required:
+                - block
+              properties:
+                block:
+                  description: iTunes-specific flag to block the podcast from publishing. See https://help.apple.com/itc/podcasts_connect/#/itcb54353390 for more information.
+                  type: boolean
+              unevaluatedProperties: false
+            feedEpisodeTitle:
+              description: Episode title as it appears in podcast feeds
+              type: string
+            editorialMajorUpdateDateTime:
+              description: The date and time at which the content of this podcast-episode received significant editorial updates
+              type: string
+              format: date-time
+    PodcastChannelDocument:
+      allOf:
+        - description: A collection-like document with an ordered `items` list (series, topic, tag, program…).
+          allOf: *ref_56
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/podcast-channel.json
+          title: Podcast Channel
+          description: A document containing metadata about a podcast channel
+          allOf: &ref_84
+            - $schema: https://json-schema.org/draft/2019-09/schema
+              $id: https://content.api.npr.org/v1/schemas/document-with-aggregation-profile.json
+              title: Document with Aggregation Profile
+              description: A document that is required to have an aggregation profile in its profiles array.
+              type: object
+              required: &ref_82
+                - profiles
+              properties: &ref_83
+                profiles:
+                  description: List of profiles that this document is intended to implement
+                  type: array
+                  contains:
+                    type: object
+                    required:
+                      - href
+                    properties:
+                      href:
+                        type: string
+                        const: /v1/profiles/aggregation
+            - type: object
+              required:
+                - itunes
+                - channelType
+              properties:
+                copyright:
+                  description: The copyright policy applied to this podcast channel represented as HTML
+                  type: string
+                language:
+                  description: An BCP 47 (or RFC 1766) language tag describing the primary language of this channel
+                  type: string
+                itunes:
+                  description: iTunes-specific attributes for this podcast channel
+                  type: object
+                  required:
+                    - block
+                  properties:
+                    block:
+                      description: iTunes-specific flag to block the podcast from publishing. See https://help.apple.com/itc/podcasts_connect/#/itcb54353390 for more information.
+                      type: boolean
+                    owner:
+                      description: iTunes-specific ownership information. See https://help.apple.com/itc/podcasts_connect/#/itcb54353390 for more detail.
+                      type: object
+                      required:
+                        - name
+                        - email
+                      properties:
+                        name:
+                          description: The name of the owner of this podcast channel
+                          type: string
+                        email:
+                          description: An RFC6531-compliant email address associated with the owner of this podcast channel
+                          type: string
+                          format: idn-email
+                      unevaluatedProperties: false
+                  unevaluatedProperties: false
+                channelType:
+                  description: The type of podcast this channel describes
+                  type: string
+                  enum:
+                    - serial
+                    - episodic
+                rssFeeds:
+                  description: Links to the RSS feeds used for this podcast channel
+                  type: array
+                  minLength: 1
+                  items:
+                    allOf:
+                      - $schema: https://json-schema.org/draft/2019-09/schema
+                        $id: https://content.api.npr.org/v1/schemas/external-link.json
+                        title: External Link
+                        description: A link to an externally-hosted document via HTTP or HTTPS
+                        allOf: *ref_2
+                      - $schema: https://json-schema.org/draft/2019-09/schema
+                        $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+                        title: No rels Link
+                        description: A link without rels
+                        not: *ref_4
+                        type: object
+                        required: *ref_0
+                        properties: *ref_1
+                    unevaluatedProperties: false
+                allowedCountries:
+                  description: 'A list of ISO 3166 country codes this podcast channel should be restricted to. If not present, there are no assumed restrictions. Ex: ''us'''
+                  type: array
+                  items:
+                    type: string
+                    minLength: 2
+                feedEpisodeCount:
+                  description: Used by CDS clients to limit how many episodes are displayed in a podcast feed. If this field is not present on a document (ie. a `null` value), it is understood that ALL episodes should be displayed.
+                  type: integer
+                  minimum: 1
+    AudioAsset:
+      description: An audio asset inside `assets`; the playable file is in `enclosures[].href`.
+      allOf:
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/document.json
+          title: Core Document
+          description: A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.
+          type: object
+          required: *ref_8
+          properties: *ref_9
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/audio.json
+          title: Audio
+          description: An audio asset
+          type: object
+          required: &ref_86
+            - enclosures
+            - isAvailable
+            - isDownloadable
+            - isEmbeddable
+            - isStreamable
+          properties: &ref_87
+            title:
+              description: The title of this audio asset
+              type: string
+            source:
+              description: An identifier (e.g., GUID, filename, or URL) to use to direct one back to the audio source.
+              type: string
+            sourceHash:
+              description: The unique file hash associated with the source audio file.
+              type: string
+              minLength: 1
+            enclosures:
+              description: The links to the various instances of this audio
+              type: array
+              items:
+                unevaluatedProperties: false
+                $schema: https://json-schema.org/draft/2019-09/schema
+                $id: https://content.api.npr.org/v1/schemas/audio-file-link.json
+                title: Link
+                description: A link to a specific audio file
+                allOf: &ref_85
+                  - $schema: https://json-schema.org/draft/2019-09/schema
+                    $id: https://content.api.npr.org/v1/schemas/media-link.json
+                    title: Media Link
+                    description: A link to a media file
+                    allOf: &ref_57
+                      - $schema: https://json-schema.org/draft/2019-09/schema
+                        $id: https://content.api.npr.org/v1/schemas/external-link.json
+                        title: External Link
+                        description: A link to an externally-hosted document via HTTP or HTTPS
+                        allOf: *ref_2
+                      - type: object
+                        properties:
+                          type:
+                            description: The expected RFC6838 compliant media type of the representation specified by this link. The media type given SHOULD be registered at https://www.iana.org/assignments/media-types
+                            type: string
+                  - type: object
+                    properties:
+                      fileSize:
+                        type: integer
+                        description: The size of the file (in bytes)
+                        minimum: 0
+                  - type: object
+                    properties:
+                      rels:
+                        items:
+                          type: string
+                          enum:
+                            - premium
+                            - sponsored
+                            - tracked
+            duration:
+              description: The known accepted duration of this audio asset in seconds
+              type: integer
+              minimum: 1
+            isAvailable:
+              description: Is this audio available and ready for access
+              type: boolean
+            isDownloadable:
+              description: Is this audio available for download
+              type: boolean
+            isEmbeddable:
+              description: Is this audio available for embed
+              type: boolean
+            isStreamable:
+              description: Is this audio available for stream
+              type: boolean
+            availabilityMessage:
+              description: Description associated with the availability
+              type: string
+            songTitle:
+              description: title for song audio
+              type: string
+            songArtist:
+              description: artist for song audio
+              type: string
+            songTrackNumber:
+              description: track number for song audio
+              type: string
+            albumTitle:
+              description: album title for music audio
+              type: string
+            albumArtist:
+              description: album artist for music audio
+              type: string
+            streamExpirationDateTime:
+              description: The date and time that this stream expires, in RFC3339 full-date-time format
+              type: string
+              format: date-time
+            transcriptLink:
+              description: A link to the document representing the transcript of this audio
+              allOf:
+                - $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/internal-document-link.json
+                  title: Internal Document Link
+                  description: A link to an internally-stored document
+                  allOf: *ref_3
+                - type: object
+                  properties:
+                    rels:
+                      type: array
+                      contains:
+                        const: extension
+                      items:
+                        type: string
+                        enum:
+                          - extension
+                          - always-display
+              unevaluatedProperties: false
+            transcriptWebPageLink:
+              description: A link to the web page where the transcript of this audio is displayed
+              allOf:
+                - $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/external-link.json
+                  title: External Link
+                  description: A link to an externally-hosted document via HTTP or HTTPS
+                  allOf: *ref_2
+                - $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+                  title: No rels Link
+                  description: A link without rels
+                  not: *ref_4
+                  type: object
+                  required: *ref_0
+                  properties: *ref_1
+              unevaluatedProperties: false
+            embeddedPlayerLink:
+              description: A link to an embedded audio player serving this audio
+              allOf:
+                - $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/external-link.json
+                  title: External Link
+                  description: A link to an externally-hosted document via HTTP or HTTPS
+                  allOf: *ref_2
+                - $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+                  title: No rels Link
+                  description: A link without rels
+                  not: *ref_4
+                  type: object
+                  required: *ref_0
+                  properties: *ref_1
+              unevaluatedProperties: false
+    ImageAsset:
+      description: An image asset; `enclosures` carry crops distinguished by `rels` such as `image-wide`, `image-square`, plus `hrefTemplate` for on-the-fly resizing.
+      allOf:
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/document.json
+          title: Core Document
+          description: A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.
+          type: object
+          required: *ref_8
+          properties: *ref_9
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/image.json
+          title: Image
+          description: An image asset
+          definitions: &ref_92
+            image-enclosure-link: &ref_90
+              allOf: &ref_58
+                - $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/crop-link.json
+                  title: Link
+                  description: A link to a specific image crop
+                  allOf: &ref_88
+                    - $schema: https://json-schema.org/draft/2019-09/schema
+                      $id: https://content.api.npr.org/v1/schemas/media-link.json
+                      title: Media Link
+                      description: A link to a media file
+                      allOf: *ref_57
+                    - type: object
+                      properties:
+                        height:
+                          type: integer
+                          minimum: 1
+                          description: The height of the linked image file (in pixels)
+                        width:
+                          type: integer
+                          minimum: 1
+                          description: The width of the linked image file (in pixels)
+                        hrefTemplate:
+                          type: string
+                          format: uri-template
+                          pattern: ^([^\{]|\{(width|quality|format)\})*$
+                          description: An RFC6570 compliant URI template with {width}, {quality}, and {format} as parameters; this template may be used to construct a URI pointing to a resized version of this image. {width} is the desired width in pixels of the resized image. {quality} is the percentage of the image's original quality remaining in the resized image (1-100). {format} is the desired image format as an extension ('jpg', 'png').
+                - type: object
+                  properties:
+                    rels:
+                      type: array
+                      items:
+                        type: string
+                        enum:
+                          - primary
+                          - scalable
+                          - image-standard
+                          - image-square
+                          - image-wide
+                          - image-enlargement
+                          - image-custom
+                          - image-brick
+                          - image-vertical
+                          - image-vertical-wide
+                          - image-slide
+          allOf: &ref_93
+            - $schema: https://json-schema.org/draft/2019-09/schema
+              $id: https://content.api.npr.org/v1/schemas/sizable-asset.json
+              title: Sizable Asset
+              description: A asset with multiple sizes
+              type: object
+              properties: &ref_89
+                displaySize:
+                  type: string
+                  enum:
+                    - small
+                    - medium
+                    - large
+                    - x-large
+            - type: object
+              required:
+                - enclosures
+              properties:
+                title:
+                  description: The title of this image
+                  type: string
+                enclosures:
+                  description: The links to the various instances of this image
+                  type: array
+                  minLength: 1
+                  items:
+                    unevaluatedProperties: false
+                    allOf: *ref_58
+                producer:
+                  description: The producer of this image
+                  type: string
+                provider:
+                  description: The provider of this image
+                  type: string
+                providerLink:
+                  description: The link to the provider of this image
+                  allOf:
+                    - $schema: https://json-schema.org/draft/2019-09/schema
+                      $id: https://content.api.npr.org/v1/schemas/contact-link.json
+                      title: Contact Link
+                      description: An RFC3987-compliant internationalized URI restricted to only those that have http, https, or mailto schemes
+                      allOf: &ref_91
+                        - $schema: https://json-schema.org/draft/2019-09/schema
+                          $id: https://content.api.npr.org/v1/schemas/link.json
+                          title: Link
+                          description: A link to an externally-defined location
+                          type: object
+                          required: *ref_0
+                          properties: *ref_1
+                        - type: object
+                          required:
+                            - href
+                          properties:
+                            href:
+                              type: string
+                              pattern: ^([hH][tT]{2}[pP][sS]?://|[mM][aA][iI][lL][tT][oO]:).*$
+                    - $schema: https://json-schema.org/draft/2019-09/schema
+                      $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+                      title: No rels Link
+                      description: A link without rels
+                      not: *ref_4
+                      type: object
+                      required: *ref_0
+                      properties: *ref_1
+                  unevaluatedProperties: false
+                caption:
+                  description: The caption of this image
+                  type: string
+                altText:
+                  description: Text that is displayed when a user hovers over the image. Also may be used by a screen reader in place of the image.
+                  type: string
+                enlargementCaption:
+                  description: The caption of the 'enlargement' crop of this image
+                  type: string
+    TextAsset:
+      description: One block of body text as HTML, referenced from `layout`.
+      allOf:
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/document.json
+          title: Core Document
+          description: A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.
+          type: object
+          required: *ref_8
+          properties: *ref_9
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/text.json
+          title: Text
+          description: An asset representing text associated with a document
+          type: object
+          required: &ref_94
+            - text
+          properties: &ref_95
+            text:
+              description: The textual representation of the content for this asset (with optional formatting or markup).
+              type: string
+    HtmlBlockAsset:
+      allOf:
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/document.json
+          title: Core Document
+          description: A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.
+          type: object
+          required: *ref_8
+          properties: *ref_9
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/html-block.json
+          title: Html Block
+          description: An asset representing freeform HTML content.
+          type: object
+          required: &ref_96
+            - html
+          properties: &ref_97
+            html:
+              description: The HTML representation of the content for this asset.
+              type: string
+            title:
+              description: The title of the HTML representation.
+              type: string
+    ReferenceBylineAsset:
+      description: A byline that points at a `biography` document via `bylineDocuments`.
+      allOf:
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/document.json
+          title: Core Document
+          description: A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.
+          type: object
+          required: *ref_8
+          properties: *ref_9
+        - $schema: https://json-schema.org/draft/2019-09/schema
+          $id: https://content.api.npr.org/v1/profiles/reference-byline.json
+          title: Reference Byline
+          description: A byline representing a person or other entity responsible for the creation of this document. The person or entity represented by this asset should hold attributable responsibility for a portion of the content represented in this document. The data relating to the individual/entity will be provided through the links defined within
+          type: object
+          definitions: &ref_99
+            bylineLink: &ref_98
+              allOf: &ref_59
+                - $schema: https://json-schema.org/draft/2019-09/schema
+                  $id: https://content.api.npr.org/v1/schemas/internal-document-link.json
+                  title: Internal Document Link
+                  description: A link to an internally-stored document
+                  allOf: *ref_3
+                - type: object
+                  properties:
+                    rels:
+                      type: array
+                      items:
+                        type: string
+                        enum:
+                          - biography
+          required: &ref_100
+            - bylineDocuments
+          properties: &ref_101
+            bylineDocuments:
+              description: Links to internal documents where more information about this byline can be found
+              type: array
+              minItems: 1
+              contains:
+                allOf: *ref_59
+    DocumentsResponse:
+      type: object
+      description: Envelope for every document read. A single-document GET returns one element.
+      required: *ref_20
+      properties: *ref_21
+    ErrorResponse:
+      type: object
+      properties: *ref_12
+      example: *ref_13
+    JsonSchema:
+      type: object
+      description: A JSON Schema document (draft 2019-09) as served by CDS.
+      additionalProperties: true
+      example: *ref_24
+    documentId:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/documentId.json
+      title: Document ID
+      description: A common format for valid content service document IDs
+      type: string
+      pattern: ^([1-9]+[0-9]*(-[a-z0-9-]+)?|[a-z]+[a-z0-9]*-[a-z0-9-]+)$
+    link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/link.json
+      title: Link
+      description: A link to an externally-defined location
+      type: object
+      required: *ref_0
+      properties: *ref_1
+    type-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/type-link.json
+      title: Type Link
+      description: A link defined with a mandatory 'type' rel
+      allOf: *ref_60
+    document:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/document.json
+      title: Core Document
+      description: A document that can be stored and retrieved with the content service. This schema is the 'base' schema to which all CSv1 documents must conform to.
+      type: object
+      required: *ref_8
+      properties: *ref_9
+    external-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/external-link.json
+      title: External Link
+      description: A link to an externally-hosted document via HTTP or HTTPS
+      allOf: *ref_2
+    no-rels-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/no-rels-link.json
+      title: No rels Link
+      description: A link without rels
+      not: *ref_4
+      type: object
+      required: *ref_0
+      properties: *ref_1
+    internal-document-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/internal-document-link.json
+      title: Internal Document Link
+      description: A link to an internally-stored document
+      allOf: *ref_3
+    asset-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/asset-link.json
+      title: Asset Link
+      description: A link to a locally-embedded asset document
+      allOf: *ref_47
+    collectionLink: *ref_61
+    organizationLink: *ref_62
+    noRelAssetLink: *ref_63
+    webPageLink: *ref_64
+    relatedItemLink: *ref_65
+    publishable:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/publishable.json
+      title: Publishable
+      description: A publishable document.
+      definitions: *ref_66
+      type: object
+      required: *ref_67
+      properties: *ref_68
+    story:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/story.json
+      title: Story
+      description: A publishable story document
+      type: object
+      properties: *ref_69
+    layout-link: *ref_70
+    has-layout:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/has-layout.json
+      title: Has Layout
+      description: A document with a layout array for visual presentation
+      definitions: *ref_53
+      type: object
+      required: *ref_54
+      properties: *ref_55
+    npr-website-fields:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/npr-website-fields.json
+      title: NPR Website Fields
+      description: NPR website metadata fields for linking content to the NPR website
+      type: object
+      properties: *ref_71
+    canonicalLink: *ref_72
+    renderable:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/renderable.json
+      title: Renderable
+      description: Renderable document content for visual display/presentation
+      definitions: *ref_73
+      allOf: *ref_74
+    buildoutProfileLink: *ref_75
+    buildout:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/buildout.json
+      title: Buildout
+      description: A document that should have a non-empty layout property, or one that implements one or more 'built out' profiles
+      definitions: *ref_76
+      anyOf: *ref_77
+    aggregation:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/aggregation.json
+      title: Aggregation
+      description: An object that can have an ordered list of links to documents
+      type: object
+      required: *ref_78
+      properties: *ref_79
+    podcast-episode:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/podcast-episode.json
+      title: Podcast Episode
+      description: A single episode of a podcast
+      type: object
+      required: *ref_80
+      properties: *ref_81
+    document-with-aggregation-profile:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/document-with-aggregation-profile.json
+      title: Document with Aggregation Profile
+      description: A document that is required to have an aggregation profile in its profiles array.
+      type: object
+      required: *ref_82
+      properties: *ref_83
+    podcast-channel:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/podcast-channel.json
+      title: Podcast Channel
+      description: A document containing metadata about a podcast channel
+      allOf: *ref_84
+    media-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/media-link.json
+      title: Media Link
+      description: A link to a media file
+      allOf: *ref_57
+    audio-file-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/audio-file-link.json
+      title: Link
+      description: A link to a specific audio file
+      allOf: *ref_85
+    audio:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/audio.json
+      title: Audio
+      description: An audio asset
+      type: object
+      required: *ref_86
+      properties: *ref_87
+    crop-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/crop-link.json
+      title: Link
+      description: A link to a specific image crop
+      allOf: *ref_88
+    sizable-asset:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/sizable-asset.json
+      title: Sizable Asset
+      description: A asset with multiple sizes
+      type: object
+      properties: *ref_89
+    image-enclosure-link: *ref_90
+    contact-link:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/schemas/contact-link.json
+      title: Contact Link
+      description: An RFC3987-compliant internationalized URI restricted to only those that have http, https, or mailto schemes
+      allOf: *ref_91
+    image:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/image.json
+      title: Image
+      description: An image asset
+      definitions: *ref_92
+      allOf: *ref_93
+    text:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/text.json
+      title: Text
+      description: An asset representing text associated with a document
+      type: object
+      required: *ref_94
+      properties: *ref_95
+    html-block:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/html-block.json
+      title: Html Block
+      description: An asset representing freeform HTML content.
+      type: object
+      required: *ref_96
+      properties: *ref_97
+    bylineLink: *ref_98
+    reference-byline:
+      $schema: https://json-schema.org/draft/2019-09/schema
+      $id: https://content.api.npr.org/v1/profiles/reference-byline.json
+      title: Reference Byline
+      description: A byline representing a person or other entity responsible for the creation of this document. The person or entity represented by this asset should hold attributable responsibility for a portion of the content represented in this document. The data relating to the individual/entity will be provided through the links defined within
+      type: object
+      definitions: *ref_99
+      required: *ref_100
+      properties: *ref_101

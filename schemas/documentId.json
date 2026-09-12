@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/documentId.json",
+  "title": "Document ID",
+  "description": "A common format for valid content service document IDs",
+  "type": "string",
+  "pattern": "^([1-9]+[0-9]*(-[a-z0-9-]+)?|[a-z]+[a-z0-9]*-[a-z0-9-]+)$"
+}

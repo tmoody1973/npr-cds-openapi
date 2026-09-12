@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/contact-link.json",
+  "title": "Contact Link",
+  "description": "An RFC3987-compliant internationalized URI restricted to only those that have http, https, or mailto schemes",
+  "allOf": [
+    {
+      "$ref": "./link.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "href"
+      ],
+      "properties": {
+        "href": {
+          "type": "string",
+          "pattern": "^([hH][tT]{2}[pP][sS]?://|[mM][aA][iI][lL][tT][oO]:).*$"
+        }
+      }
+    }
+  ]
+}

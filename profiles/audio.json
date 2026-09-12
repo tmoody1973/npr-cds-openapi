@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/audio.json",
+  "title": "Audio",
+  "description": "An audio asset",
+  "type": "object",
+  "required": [
+    "enclosures",
+    "isAvailable",
+    "isDownloadable",
+    "isEmbeddable",
+    "isStreamable"
+  ],
+  "properties": {
+    "title": {
+      "description": "The title of this audio asset",
+      "type": "string"
+    },
+    "source": {
+      "description": "An identifier (e.g., GUID, filename, or URL) to use to direct one back to the audio source.",
+      "type": "string"
+    },
+    "sourceHash": {
+      "description": "The unique file hash associated with the source audio file.",
+      "type": "string",
+      "minLength": 1
+    },
+    "enclosures": {
+      "description": "The links to the various instances of this audio",
+      "type": "array",
+      "items": {
+        "$ref": "../schemas/audio-file-link.json",
+        "unevaluatedProperties": false
+      }
+    },
+    "duration": {
+      "description": "The known accepted duration of this audio asset in seconds",
+      "type": "integer",
+      "minimum": 1
+    },
+    "isAvailable": {
+      "description": "Is this audio available and ready for access",
+      "type": "boolean"
+    },
+    "isDownloadable": {
+      "description": "Is this audio available for download",
+      "type": "boolean"
+    },
+    "isEmbeddable": {
+      "description": "Is this audio available for embed",
+      "type": "boolean"
+    },
+    "isStreamable": {
+      "description": "Is this audio available for stream",
+      "type": "boolean"
+    },
+    "availabilityMessage": {
+      "description": "Description associated with the availability",
+      "type": "string"
+    },
+    "songTitle": {
+      "description": "title for song audio",
+      "type": "string"
+    },
+    "songArtist": {
+      "description": "artist for song audio",
+      "type": "string"
+    },
+    "songTrackNumber": {
+      "description": "track number for song audio",
+      "type": "string"
+    },
+    "albumTitle": {
+      "description": "album title for music audio",
+      "type": "string"
+    },
+    "albumArtist": {
+      "description": "album artist for music audio",
+      "type": "string"
+    },
+    "streamExpirationDateTime": {
+      "description": "The date and time that this stream expires, in RFC3339 full-date-time format",
+      "type": "string",
+      "format": "date-time"
+    },
+    "transcriptLink": {
+      "description": "A link to the document representing the transcript of this audio",
+      "allOf": [
+        {
+          "$ref": "../schemas/internal-document-link.json"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rels": {
+              "type": "array",
+              "contains": {
+                "const": "extension"
+              },
+              "items": {
+                "type": "string",
+                "enum": [
+                  "extension",
+                  "always-display"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "transcriptWebPageLink": {
+      "description": "A link to the web page where the transcript of this audio is displayed",
+      "allOf": [
+        {
+          "$ref": "../schemas/external-link.json"
+        },
+        {
+          "$ref": "../schemas/no-rels-link.json"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "embeddedPlayerLink": {
+      "description": "A link to an embedded audio player serving this audio",
+      "allOf": [
+        {
+          "$ref": "../schemas/external-link.json"
+        },
+        {
+          "$ref": "../schemas/no-rels-link.json"
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

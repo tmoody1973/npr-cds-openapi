@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/podcast-channel.json",
+  "title": "Podcast Channel",
+  "description": "A document containing metadata about a podcast channel",
+  "allOf": [
+    {
+      "$ref": "../schemas/document-with-aggregation-profile.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "itunes",
+        "channelType"
+      ],
+      "properties": {
+        "copyright": {
+          "description": "The copyright policy applied to this podcast channel represented as HTML",
+          "type": "string"
+        },
+        "language": {
+          "description": "An BCP 47 (or RFC 1766) language tag describing the primary language of this channel",
+          "type": "string"
+        },
+        "itunes": {
+          "description": "iTunes-specific attributes for this podcast channel",
+          "type": "object",
+          "required": [
+            "block"
+          ],
+          "properties": {
+            "block": {
+              "description": "iTunes-specific flag to block the podcast from publishing. See https://help.apple.com/itc/podcasts_connect/#/itcb54353390 for more information.",
+              "type": "boolean"
+            },
+            "owner": {
+              "description": "iTunes-specific ownership information. See https://help.apple.com/itc/podcasts_connect/#/itcb54353390 for more detail.",
+              "type": "object",
+              "required": [
+                "name",
+                "email"
+              ],
+              "properties": {
+                "name": {
+                  "description": "The name of the owner of this podcast channel",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "An RFC6531-compliant email address associated with the owner of this podcast channel",
+                  "type": "string",
+                  "format": "idn-email"
+                }
+              },
+              "unevaluatedProperties": false
+            }
+          },
+          "unevaluatedProperties": false
+        },
+        "channelType": {
+          "description": "The type of podcast this channel describes",
+          "type": "string",
+          "enum": [
+            "serial",
+            "episodic"
+          ]
+        },
+        "rssFeeds": {
+          "description": "Links to the RSS feeds used for this podcast channel",
+          "type": "array",
+          "minLength": 1,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "../schemas/external-link.json"
+              },
+              {
+                "$ref": "../schemas/no-rels-link.json"
+              }
+            ],
+            "unevaluatedProperties": false
+          }
+        },
+        "allowedCountries": {
+          "description": "A list of ISO 3166 country codes this podcast channel should be restricted to. If not present, there are no assumed restrictions. Ex: 'us'",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2
+          }
+        },
+        "feedEpisodeCount": {
+          "description": "Used by CDS clients to limit how many episodes are displayed in a podcast feed. If this field is not present on a document (ie. a `null` value), it is understood that ALL episodes should be displayed.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  ]
+}

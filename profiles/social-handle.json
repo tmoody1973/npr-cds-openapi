@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/social-handle.json",
+  "title": "Social Handle",
+  "description": "string handles used to identify an account on a social platform",
+  "type": "object",
+  "required": [
+    "platform",
+    "handle"
+  ],
+  "properties": {
+    "platform": {
+      "type": "string",
+      "enum": [
+        "facebook",
+        "twitter",
+        "instagram",
+        "tumblr",
+        "pinterest"
+      ]
+    },
+    "handle": {
+      "type": "string"
+    }
+  }
+}

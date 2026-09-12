@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/has-images.json",
+  "title": "Has Images",
+  "description": "A document with image assets",
+  "type": "object",
+  "required": [
+    "images"
+  ],
+  "properties": {
+    "images": {
+      "description": "The assets or documents representing the images of this document",
+      "type": "array",
+      "minLength": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "../schemas/asset-link.json"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rels": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "logo",
+                    "premium-logo",
+                    "promo-image-brick",
+                    "promo-image-wide",
+                    "promo-image-square",
+                    "promo-image-standard",
+                    "primary",
+                    "headshot",
+                    "thumbnail"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      }
+    }
+  }
+}

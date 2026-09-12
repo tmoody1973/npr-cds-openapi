@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/youtube-video.json",
+  "title": "YouTube Video",
+  "description": "An asset representing a YouTube video associated with a document. For more information on how to use this to construct a link/embed, see https://developers.google.com/youtube.",
+  "allOf": [
+    {
+      "$ref": "../schemas/sizable-asset.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "videoId"
+      ],
+      "properties": {
+        "headline": {
+          "description": "The person, organization, or series associated with this video for attribution purposes",
+          "type": "string"
+        },
+        "subheadline": {
+          "description": "The caption used for the embedded video link",
+          "type": "string"
+        },
+        "startTime": {
+          "description": "Number of seconds in the video to start playback",
+          "type": "integer",
+          "minimum": 0
+        },
+        "videoId": {
+          "description": "The ID used to identify this video within YouTube's API.",
+          "type": "string",
+          "pattern": "^[^ ]+$"
+        },
+        "embedSize": {
+          "description": "DEPRECATED/REMOVE: The relative size the embedded YouTube player should be displayed at",
+          "type": "string",
+          "enum": [
+            "small",
+            "medium",
+            "large",
+            "x-large"
+          ]
+        }
+      }
+    }
+  ]
+}

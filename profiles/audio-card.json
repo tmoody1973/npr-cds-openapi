@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/audio-card.json",
+  "title": "Audio Card",
+  "description": "A card document which features audio for display",
+  "$ref": "../schemas/card.json"
+}

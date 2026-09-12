@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/audio-file-link.json",
+  "title": "Link",
+  "description": "A link to a specific audio file",
+  "allOf": [
+    {
+      "$ref": "./media-link.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "fileSize": {
+          "type": "integer",
+          "description": "The size of the file (in bytes)",
+          "minimum": 0
+        }
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "rels": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "premium",
+              "sponsored",
+              "tracked"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

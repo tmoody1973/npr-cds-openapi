@@ -1,0 +1,42 @@
+# Cortex project: interactive docs + MCP server for NPR CDS, from openapi.yaml.
+project: npr-cds
+title: NPR CDS API (community)
+theme: system
+home:
+  title: NPR CDS API
+  description: Community OpenAPI description of NPR's Content Distribution Service, with an MCP server for AI agents.
+  cta:
+    label: Read the intro
+    href: /docs
+  sections:
+    - title: API Reference
+      description: Every CDS endpoint with query semantics, sort grammar and paging limits.
+      badge: Reference
+      href: /reference
+    - title: MCP
+      description: Query CDS from Claude or any MCP client.
+      badge: AI Agents
+      href: /mcp
+docs:
+  - section: Using CDS
+    sources:
+      - title: Query semantics and auth
+        document: docs/REST_INTRO.md
+      - title: HYFIN labels and sync rules
+        document: docs/hyfin-labels.md
+sources:
+  - title: CDS REST API
+    type: openapi-spec
+    spec: ./dist/openapi.dereferenced.yaml  # fully inlined: Cortex does not resolve $ref inside parameter schemas
+    intro: ./docs/REST_INTRO.md
+    languages:
+      - language: typescript
+        package_name: '@hyfin/npr-cds-client'
+        github_repository: github.com/tmoody1973/npr-cds-openapi
+generators:
+  templates: ./cortex-templates
+output:
+  base_dir: ./generated
+mcp:
+  package_name: npr-cds-mcp
+  github_repository: github.com/tmoody1973/npr-cds-openapi

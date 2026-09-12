@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/renderable.json",
+  "title": "Renderable",
+  "description": "Renderable document content for visual display/presentation",
+  "definitions": {
+    "canonicalLink": {
+      "description": "A link object that contains a rel of \"canonical\"",
+      "type": "object",
+      "required": [
+        "rels"
+      ],
+      "properties": {
+        "rels": {
+          "type": "array",
+          "contains": {
+            "const": "canonical"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "../schemas/has-layout.json"
+    },
+    {
+      "$ref": "../schemas/npr-website-fields.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "webPages"
+      ],
+      "properties": {
+        "webPages": {
+          "description": "Links to web pages where more information about this document can be found",
+          "type": "array",
+          "minItems": 1,
+          "contains": {
+            "$ref": "#/definitions/canonicalLink"
+          }
+        },
+        "seoTitle": {
+          "description": "A short title used for search engine optimization",
+          "type": "string"
+        },
+        "robotsNoIndex": {
+          "description": "Setting for disallowing indexing by robots",
+          "type": "boolean"
+        },
+        "autoRefreshInterval": {
+          "description": "Number of seconds to wait before auto-refreshing the web page",
+          "type": "integer",
+          "minimum": 1
+        },
+        "featuredAreaType": {
+          "description": "A reference to the type of template for displaying this content. The name of the template should indicate how many items should be displayed in the featured area, and in what configuration.",
+          "type": "string",
+          "enum": [
+            "zero",
+            "one",
+            "two",
+            "three"
+          ]
+        }
+      }
+    }
+  ]
+}

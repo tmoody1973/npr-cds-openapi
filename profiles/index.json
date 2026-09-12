@@ -1,0 +1,191 @@
+[
+  {
+    "href": "/v1/profiles/aggregation"
+  },
+  {
+    "href": "/v1/profiles/area"
+  },
+  {
+    "href": "/v1/profiles/audio-card"
+  },
+  {
+    "href": "/v1/profiles/audio"
+  },
+  {
+    "href": "/v1/profiles/biography"
+  },
+  {
+    "href": "/v1/profiles/blog-category"
+  },
+  {
+    "href": "/v1/profiles/blog"
+  },
+  {
+    "href": "/v1/profiles/book-ecommerce"
+  },
+  {
+    "href": "/v1/profiles/buildout"
+  },
+  {
+    "href": "/v1/profiles/byline"
+  },
+  {
+    "href": "/v1/profiles/card"
+  },
+  {
+    "href": "/v1/profiles/collection"
+  },
+  {
+    "href": "/v1/profiles/container"
+  },
+  {
+    "href": "/v1/profiles/correction"
+  },
+  {
+    "href": "/v1/profiles/document"
+  },
+  {
+    "href": "/v1/profiles/external-link"
+  },
+  {
+    "href": "/v1/profiles/has-audio"
+  },
+  {
+    "href": "/v1/profiles/has-corrections"
+  },
+  {
+    "href": "/v1/profiles/has-galleries"
+  },
+  {
+    "href": "/v1/profiles/has-html-blocks"
+  },
+  {
+    "href": "/v1/profiles/has-images"
+  },
+  {
+    "href": "/v1/profiles/has-notes"
+  },
+  {
+    "href": "/v1/profiles/has-premium-audio"
+  },
+  {
+    "href": "/v1/profiles/has-social-handles"
+  },
+  {
+    "href": "/v1/profiles/has-videos"
+  },
+  {
+    "href": "/v1/profiles/highlight"
+  },
+  {
+    "href": "/v1/profiles/homepage"
+  },
+  {
+    "href": "/v1/profiles/html-block"
+  },
+  {
+    "href": "/v1/profiles/html-card"
+  },
+  {
+    "href": "/v1/profiles/image-gallery"
+  },
+  {
+    "href": "/v1/profiles/image"
+  },
+  {
+    "href": "/v1/profiles/inset"
+  },
+  {
+    "href": "/v1/profiles/internal-link"
+  },
+  {
+    "href": "/v1/profiles/list"
+  },
+  {
+    "href": "/v1/profiles/listenable"
+  },
+  {
+    "href": "/v1/profiles/music-artist"
+  },
+  {
+    "href": "/v1/profiles/music-genre"
+  },
+  {
+    "href": "/v1/profiles/network-aggregation"
+  },
+  {
+    "href": "/v1/profiles/newscast"
+  },
+  {
+    "href": "/v1/profiles/note"
+  },
+  {
+    "href": "/v1/profiles/player-video"
+  },
+  {
+    "href": "/v1/profiles/podcast-category"
+  },
+  {
+    "href": "/v1/profiles/podcast-channel"
+  },
+  {
+    "href": "/v1/profiles/podcast-episode"
+  },
+  {
+    "href": "/v1/profiles/program-episode"
+  },
+  {
+    "href": "/v1/profiles/program"
+  },
+  {
+    "href": "/v1/profiles/promo-card"
+  },
+  {
+    "href": "/v1/profiles/publishable"
+  },
+  {
+    "href": "/v1/profiles/pull-quote"
+  },
+  {
+    "href": "/v1/profiles/reference-byline"
+  },
+  {
+    "href": "/v1/profiles/renderable"
+  },
+  {
+    "href": "/v1/profiles/resource-container"
+  },
+  {
+    "href": "/v1/profiles/series"
+  },
+  {
+    "href": "/v1/profiles/social-handle"
+  },
+  {
+    "href": "/v1/profiles/story"
+  },
+  {
+    "href": "/v1/profiles/stream-player-video"
+  },
+  {
+    "href": "/v1/profiles/tag"
+  },
+  {
+    "href": "/v1/profiles/text"
+  },
+  {
+    "href": "/v1/profiles/topic"
+  },
+  {
+    "href": "/v1/profiles/transcript"
+  },
+  {
+    "href": "/v1/profiles/tweet"
+  },
+  {
+    "href": "/v1/profiles/video-carousel-card"
+  },
+  {
+    "href": "/v1/profiles/youtube-video"
+  }
+]

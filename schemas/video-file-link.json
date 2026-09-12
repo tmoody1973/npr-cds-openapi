@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/video-file-link.json",
+  "title": "Link",
+  "description": "A link to a specific video file",
+  "allOf": [
+    {
+      "$ref": "./media-link.json"
+    },
+    {
+      "required": [
+        "rels"
+      ],
+      "type": "object",
+      "properties": {
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The height of the linked video file (in pixels)"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The width of the linked video file (in pixels)"
+        },
+        "rels": {
+          "type": "array",
+          "items": {
+            "description": "The quality and orientation of the player-video",
+            "type": "string",
+            "enum": [
+              "primary",
+              "mp4-low",
+              "mp4-med",
+              "mp4-high",
+              "mp4-hd",
+              "hls",
+              "video-wide",
+              "video-vertical-wide"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

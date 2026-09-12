@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/no-rels-link.json",
+  "title": "No rels Link",
+  "description": "A link without rels",
+  "$ref": "./link.json",
+  "not": {
+    "type": "object",
+    "required": [
+      "rels"
+    ]
+  }
+}

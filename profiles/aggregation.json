@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/aggregation.json",
+  "title": "Aggregation",
+  "description": "An object that can have an ordered list of links to documents",
+  "type": "object",
+  "required": [
+    "items"
+  ],
+  "properties": {
+    "items": {
+      "description": "A prioritized list of links to documents that make up this aggregation",
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "../schemas/internal-document-link.json"
+          },
+          {
+            "$ref": "../schemas/no-rels-link.json"
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "maxItems": 100
+    },
+    "relatedNewsletterIds": {
+      "description": "Indicate which newsletter(s), if any, with which this aggregation is associated.   The string can be used with other APIs that handle NPR newsletters.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "money",
+          "invisibilia",
+          "news",
+          "ed",
+          "politics",
+          "code-switch",
+          "goats-and-soda",
+          "books",
+          "music",
+          "pop-culture",
+          "health",
+          "public-editor",
+          "npr-extra",
+          "student-podcast-challenge",
+          "life-kit",
+          "life-kit-sleep",
+          "the-new-normal",
+          "best-of-npr",
+          "breaking-news",
+          "scotts-thoughts",
+          "tiny-desk-contest",
+          "body-electric",
+          "stress-less",
+          "sea-camp",
+          "pod-club",
+          "financial-reset",
+          "strength-training",
+          "winter-olympics",
+          "indicator",
+          "food-budget",
+          "life-kit-skincare",
+          "only-on-npr"
+        ]
+      },
+      "minLength": 1
+    }
+  }
+}

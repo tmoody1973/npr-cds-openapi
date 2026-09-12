@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/has-galleries.json",
+  "title": "Has Galleries",
+  "description": "A document with gallery assets",
+  "type": "object",
+  "required": [
+    "galleries"
+  ],
+  "properties": {
+    "galleries": {
+      "description": "The assets or documents representing the gallery content of this document",
+      "type": "array",
+      "minLength": 1,
+      "items": {
+        "$ref": "../schemas/asset-link.json",
+        "unevaluatedProperties": false
+      }
+    }
+  }
+}

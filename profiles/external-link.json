@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/external-link.json",
+  "title": "External Link",
+  "description": "An designation for content representing a link to external content. Intended to be used as an 'interface'.",
+  "type": "object",
+  "required": [
+    "externalLink"
+  ],
+  "properties": {
+    "externalLink": {
+      "description": "A link to an external document",
+      "allOf": [
+        {
+          "$ref": "../schemas/external-link.json"
+        },
+        {
+          "$ref": "../schemas/no-rels-link.json"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "linkText": {
+      "description": "Display text representing the document being linked to.",
+      "type": "string"
+    },
+    "linkLabel": {
+      "description": "DEPRECATED/REMOVE: A short space to highlight additional metadata attributed to the linked content.",
+      "type": "string"
+    }
+  }
+}

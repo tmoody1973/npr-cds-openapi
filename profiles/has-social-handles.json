@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/has-social-handles.json",
+  "title": "Has Social Handles",
+  "description": "A document with social handles",
+  "type": "object",
+  "required": [
+    "socialHandles"
+  ],
+  "properties": {
+    "socialHandles": {
+      "description": "a collection of links to social-handle assets used to identify accounts on social platforms",
+      "type": "array",
+      "uniqueItems": true,
+      "minLength": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "../schemas/asset-link.json"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rels": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "facebook",
+                    "twitter",
+                    "pinterest",
+                    "instagram",
+                    "tumblr"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "unevaluatedProperties": false
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/crop-link.json",
+  "title": "Link",
+  "description": "A link to a specific image crop",
+  "allOf": [
+    {
+      "$ref": "./media-link.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The height of the linked image file (in pixels)"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The width of the linked image file (in pixels)"
+        },
+        "hrefTemplate": {
+          "type": "string",
+          "format": "uri-template",
+          "pattern": "^([^\\{]|\\{(width|quality|format)\\})*$",
+          "description": "An RFC6570 compliant URI template with {width}, {quality}, and {format} as parameters; this template may be used to construct a URI pointing to a resized version of this image. {width} is the desired width in pixels of the resized image. {quality} is the percentage of the image's original quality remaining in the resized image (1-100). {format} is the desired image format as an extension ('jpg', 'png')."
+        }
+      }
+    }
+  ]
+}

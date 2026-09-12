@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/image.json",
+  "title": "Image",
+  "description": "An image asset",
+  "definitions": {
+    "image-enclosure-link": {
+      "allOf": [
+        {
+          "$ref": "../schemas/crop-link.json"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "primary",
+                  "scalable",
+                  "image-standard",
+                  "image-square",
+                  "image-wide",
+                  "image-enlargement",
+                  "image-custom",
+                  "image-brick",
+                  "image-vertical",
+                  "image-vertical-wide",
+                  "image-slide"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "../schemas/sizable-asset.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "enclosures"
+      ],
+      "properties": {
+        "title": {
+          "description": "The title of this image",
+          "type": "string"
+        },
+        "enclosures": {
+          "description": "The links to the various instances of this image",
+          "type": "array",
+          "minLength": 1,
+          "items": {
+            "$ref": "#/definitions/image-enclosure-link",
+            "unevaluatedProperties": false
+          }
+        },
+        "producer": {
+          "description": "The producer of this image",
+          "type": "string"
+        },
+        "provider": {
+          "description": "The provider of this image",
+          "type": "string"
+        },
+        "providerLink": {
+          "description": "The link to the provider of this image",
+          "allOf": [
+            {
+              "$ref": "../schemas/contact-link.json"
+            },
+            {
+              "$ref": "../schemas/no-rels-link.json"
+            }
+          ],
+          "unevaluatedProperties": false
+        },
+        "caption": {
+          "description": "The caption of this image",
+          "type": "string"
+        },
+        "altText": {
+          "description": "Text that is displayed when a user hovers over the image. Also may be used by a screen reader in place of the image.",
+          "type": "string"
+        },
+        "enlargementCaption": {
+          "description": "The caption of the 'enlargement' crop of this image",
+          "type": "string"
+        }
+      }
+    }
+  ]
+}

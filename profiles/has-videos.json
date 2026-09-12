@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/has-videos.json",
+  "title": "Has Videos",
+  "description": "A document with video assets",
+  "type": "object",
+  "required": [
+    "videos"
+  ],
+  "properties": {
+    "videos": {
+      "description": "The assets or documents representing the video content of this document",
+      "type": "array",
+      "minLength": 1,
+      "items": {
+        "$ref": "../schemas/asset-link.json",
+        "unevaluatedProperties": false
+      }
+    }
+  }
+}

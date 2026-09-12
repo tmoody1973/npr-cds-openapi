@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/podcast-category.json",
+  "title": "Podcast Category",
+  "description": "A category representing a collection of podcasts",
+  "$ref": "../schemas/document-with-aggregation-profile.json"
+}

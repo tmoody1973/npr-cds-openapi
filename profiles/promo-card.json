@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/promo-card.json",
+  "title": "Promo Card",
+  "description": "A card document which promotes another piece of content",
+  "allOf": [
+    {
+      "$ref": "../schemas/card.json"
+    },
+    {
+      "$ref": "../schemas/sizable-asset.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "cardStyle"
+      ],
+      "properties": {
+        "cardStyle": {
+          "type": "string",
+          "enum": [
+            "AggSpiceRack",
+            "AudioCallToAction",
+            "BestsellerList",
+            "BookExcerpt",
+            "BookWithCover",
+            "BookWithoutCover",
+            "CallToAction",
+            "FeaturedPodcastEpisode",
+            "InsetTwoColumn",
+            "MediaPromo",
+            "MusicAggPromo",
+            "MusicAggPromoWithBlurb",
+            "MusicPromo",
+            "MusicSpike",
+            "Playlist",
+            "PodcastCard",
+            "PodcastEpisodeCard",
+            "ProgramPodcastDirItem",
+            "ProgramSegment",
+            "SimpleNoDate",
+            "Simple",
+            "Standard",
+            "VideoPlaylist"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/document-with-aggregation-profile.json",
+  "title": "Document with Aggregation Profile",
+  "description": "A document that is required to have an aggregation profile in its profiles array.",
+  "type": "object",
+  "required": [
+    "profiles"
+  ],
+  "properties": {
+    "profiles": {
+      "description": "List of profiles that this document is intended to implement",
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "required": [
+          "href"
+        ],
+        "properties": {
+          "href": {
+            "type": "string",
+            "const": "/v1/profiles/aggregation"
+          }
+        }
+      }
+    }
+  }
+}

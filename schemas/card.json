@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/card.json",
+  "title": "Card Schema",
+  "description": "Free-form callout content item.",
+  "type": "object",
+  "required": [
+    "emphasisLevel"
+  ],
+  "properties": {
+    "title": {
+      "description": "A string representation of a display title for this content.",
+      "type": "string"
+    },
+    "emphasisLevel": {
+      "description": "A measure of subjective emphasis on the weight of this material.",
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "attentionLabel": {
+      "description": "An additional presentational label for attention-grabbing purposes.",
+      "type": "string"
+    },
+    "teaser": {
+      "description": "A short description of the content contained in this document.",
+      "type": "string"
+    },
+    "eyebrowText": {
+      "description": "String representing a text eyebrow line for a card.",
+      "type": "string"
+    },
+    "eyebrowLink": {
+      "description": "Link representing an external linking eyebrow line for a card.",
+      "allOf": [
+        {
+          "$ref": "./external-link.json"
+        },
+        {
+          "$ref": "./no-rels-link.json"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "isHighPriority": {
+      "description": "Flag representing whether the card should be visually highlighted for priority.",
+      "type": "boolean"
+    },
+    "presentationElements": {
+      "description": "Priority-ordered manifest of elements that have been designated for presentation.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "headline",
+          "parentAttribution",
+          "orgAttribution",
+          "images",
+          "audio",
+          "videos",
+          "layout",
+          "galleries",
+          "htmlBlocks",
+          "supportingText",
+          "editorialAttribution"
+        ]
+      }
+    },
+    "brandings": {
+      "description": "The organization(s) whose branding should be used for this document",
+      "type": "array",
+      "uniqueItems": true,
+      "minLength": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "./external-link.json"
+          },
+          {
+            "$ref": "./no-rels-link.json"
+          }
+        ],
+        "unevaluatedProperties": false
+      }
+    }
+  }
+}

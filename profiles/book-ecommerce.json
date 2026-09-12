@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/book-ecommerce.json",
+  "title": "Book E-Commerce",
+  "description": "A description of a book, and a list of affiliate links which can be embedded in a page",
+  "type": "object",
+  "required": [
+    "title",
+    "author",
+    "affiliates"
+  ],
+  "properties": {
+    "title": {
+      "description": "The plain-text title of the book being sold.",
+      "type": "string"
+    },
+    "subtitle": {
+      "description": "A continuation of the title, also plain text, if the title is long or has a natural break",
+      "type": "string"
+    },
+    "author": {
+      "description": "The name(s) of the author(s) of the book in plain text. This format is determinded by editorial, and is not controlled by CDS",
+      "type": "string"
+    },
+    "affiliates": {
+      "description": "A list of vendors and their websites where the book can be obtained.",
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "../schemas/link.json"
+          },
+          {
+            "type": "object",
+            "required": [
+              "linkText"
+            ],
+            "properties": {
+              "linkText": {
+                "description": "The display name for the affilate link, like 'Amazon' or 'Find at your Library'.",
+                "type": "string"
+              },
+              "rels": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "book-review",
+                    "library",
+                    "purchase"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

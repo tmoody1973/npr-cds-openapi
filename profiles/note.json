@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/note.json",
+  "title": "Note",
+  "description": "A note which is intended to be accompanying a document in CDS that the note is inserted into.",
+  "type": "object",
+  "required": [
+    "text",
+    "dateTime"
+  ],
+  "properties": {
+    "title": {
+      "description": "An optional title for the note.",
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "description": "Text of the given note which is intended to accompany a given document.",
+      "type": "string",
+      "minLength": 1
+    },
+    "dateTime": {
+      "description": "UTC timestamp of when the note was added to the document.",
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

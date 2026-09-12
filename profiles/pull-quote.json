@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/pull-quote.json",
+  "title": "Pull Quote",
+  "description": "A text callout for quotes in the body of the same object. Used as a type",
+  "type": "object",
+  "required": [
+    "quote"
+  ],
+  "dependencies": {
+    "attributionContext": [
+      "attributionParty"
+    ]
+  },
+  "properties": {
+    "quote": {
+      "description": "The text of the quote itself",
+      "type": "string"
+    },
+    "attributionParty": {
+      "description": "Who said the quote, if needed",
+      "type": "string"
+    },
+    "attributionContext": {
+      "description": "When or in what context the quote was given. Attribution party must be populated if this field is used",
+      "type": "string"
+    }
+  }
+}

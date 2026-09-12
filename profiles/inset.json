@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/inset.json",
+  "title": "Inset",
+  "description": "A document that contains inner content as an aside from the main flow of content within the given context.",
+  "allOf": [
+    {
+      "$ref": "../schemas/has-layout.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "array",
+          "items": {
+            "$ref": "../schemas/no-rels-link.json"
+          }
+        }
+      }
+    }
+  ]
+}

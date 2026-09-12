@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/list.json",
+  "title": "List",
+  "description": "A list document which contains sequential document assets",
+  "allOf": [
+    {
+      "$ref": "../schemas/document-with-container-profile.json"
+    },
+    {
+      "$ref": "../schemas/sizable-asset.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "title": {
+          "description": "A human-readable title for this image gallery",
+          "type": "string",
+          "minLength": 1
+        },
+        "caption": {
+          "description": "Caption text for the list.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  ]
+}

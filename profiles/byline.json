@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/byline.json",
+  "title": "Byline",
+  "description": "A byline representing a person or other entity responsible for the creation of this document. The person or entity represented by this asset should hold attributable responsibility for a portion of the content represented in this document.",
+  "type": "object",
+  "required": [
+    "name"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  }
+}

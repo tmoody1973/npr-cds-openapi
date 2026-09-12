@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/correction.json",
+  "title": "Correction",
+  "description": "A correction asset for this document. This asset should represent a corrective change made to this document at a particular point in time after it was originally published.",
+  "type": "object",
+  "required": [
+    "text",
+    "dateTime"
+  ],
+  "properties": {
+    "title": {
+      "description": "The title of this correction to be displayed along with the text",
+      "type": "string"
+    },
+    "text": {
+      "description": "The textual description of the correction that was made to this document (with optional formatting or markup).",
+      "type": "string"
+    },
+    "dateTime": {
+      "description": "The date and time this correction was made",
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

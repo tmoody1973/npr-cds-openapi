@@ -1,0 +1,683 @@
+openapi: 3.1.0
+info:
+  title: NPR Content Distribution Service (CDS) API
+  version: 1.0.0-community.1
+  summary: Community-written OpenAPI description of NPR's CDS read/write API for member stations.
+  description: |
+    The Content Distribution Service (CDS) is NPR's system for validating, ingesting and
+    distributing content between NPR and its member stations. Every piece of content is a
+    **document**: a JSON object that declares which **profiles** it implements. A profile is a
+    JSON Schema fragment (for example `story`, `audio`, `has-images`) that adds fields to the
+    base `document` shape.
+
+    This description is **not published by NPR**. It was written from NPR's public documentation
+    at <https://npr.github.io/content-distribution-service/> and from the JSON Schemas CDS itself
+    serves at `/v1/profiles/{name}` and `/v1/schemas/{name}`, which are vendored verbatim under
+    `profiles/` and `schemas/` and referenced from this file. Re-run `scripts/fetch-schemas.mjs`
+    to refresh them.
+
+    ### Authentication
+    Most endpoints need a bearer token issued by NPR Member Partnership. Send it as
+    `Authorization: Bearer <token>`. Any valid token can read all of CDS; writes are limited to
+    documents whose ID starts with the client's assigned prefix, or whose
+    `authorizedOrgServiceIds` matches the client. The profile and schema endpoints are public.
+
+    ### Query semantics on `GET /v1/documents`
+    * Comma-separated values inside one parameter are **OR**: `profileIds=story,podcast-episode`.
+    * Repeating a parameter is **AND**: `profileIds=story&profileIds=has-audio`.
+    * Different parameters are **AND**.
+    * `excluded…` parameters remove matches.
+    * Date parameters accept an RFC 3339 date-time (`2024-01-01T00:00:00Z`) or a full date
+      (`2024-01-01`), optionally as an open or closed range with `...`:
+      `2024-01-01...`, `...2024-12-31`, `2024-01-01...2024-12-31`. A bare full date is
+      interpreted in US Eastern time (`-05:00`); a range's start date means 00:00:00 and its
+      end date means 23:59:59.
+    * Results are paged with `offset` and `limit`. At most 300 per request and never past the
+      2000th result: `offset + limit <= 2000`. There is no cursor; each query is evaluated fresh.
+    * NPR's docs say the default order is `publishDateTime` descending, but in our tests
+      (September 2026) queries without `sort` came back oldest first. Always pass `sort`.
+
+    ### Document IDs
+    Numeric IDs (`1252108419`) are NPR-originated. Prefixed IDs (`nx-s1-…`, `g-s921-…`) belong to
+    the client that owns that prefix. Examples in this file use NPR's own public examples.
+  license:
+    name: MIT
+    identifier: MIT
+  contact:
+    name: npr-cds-openapi maintainers
+    url: https://github.com/tmoody1973/npr-cds-openapi
+externalDocs:
+  description: Official CDS documentation
+  url: https://npr.github.io/content-distribution-service/
+
+servers:
+  - url: https://content.api.npr.org
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Documents
+    description: Read, query, create, update and delete CDS documents.
+  - name: Profiles
+    description: JSON Schemas for the standard CDS profiles. Public.
+  - name: Schemas
+    description: Shared JSON Schemas referenced by profiles. Public.
+  - name: Client profiles
+    description: Client-specific custom JSON Schemas. Public.
+  - name: Subscriptions
+    description: Webhook subscription confirmation. NPR-internal; not scoped for member stations.
+
+paths:
+  /v1/documents:
+    get:
+      tags: [Documents]
+      operationId: queryDocuments
+      summary: Query documents
+      description: |
+        Return documents matching every given filter. A query with no filters returns the
+        newest documents across all of CDS. A query that matches nothing returns `200` with an
+        empty `resources` array.
+      parameters:
+        - $ref: '#/components/parameters/ids'
+        - $ref: '#/components/parameters/excludedIds'
+        - $ref: '#/components/parameters/profileIds'
+        - $ref: '#/components/parameters/excludedProfileIds'
+        - $ref: '#/components/parameters/collectionIds'
+        - $ref: '#/components/parameters/ownerHrefs'
+        - $ref: '#/components/parameters/excludedOwnerHrefs'
+        - $ref: '#/components/parameters/nprWebsitePaths'
+        - $ref: '#/components/parameters/publishDateTime'
+        - $ref: '#/components/parameters/editorialLastModifiedDateTime'
+        - $ref: '#/components/parameters/recommendUntilDateTime'
+        - $ref: '#/components/parameters/showDates'
+        - $ref: '#/components/parameters/seasonNumber'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/transclude'
+      responses:
+        '200':
+          $ref: '#/components/responses/DocumentsOk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /v1/documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/documentId'
+    get:
+      tags: [Documents]
+      operationId: getDocument
+      summary: Get one document
+      description: |
+        Return a single document by ID. The body uses the same `resources` envelope as a query,
+        holding exactly one document. `transclude` is the only query parameter accepted here.
+      parameters:
+        - $ref: '#/components/parameters/transclude'
+      responses:
+        '200':
+          $ref: '#/components/responses/DocumentsOk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      tags: [Documents]
+      operationId: putDocument
+      summary: Create or update a document
+      description: |
+        Create the document if the ID is new, otherwise replace it. The ID in the path must
+        start with the client's assigned document prefix, or the existing document's
+        `authorizedOrgServiceIds` must include one of the client's services. The body must
+        validate against every profile it lists. `meta` is read-only; if present it must be
+        returned as received.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      responses:
+        '200':
+          description: Document updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentsResponse'
+        '201':
+          description: Document created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [Documents]
+      operationId: deleteDocument
+      summary: Delete a document
+      description: Same write authorization rules as `PUT`.
+      responses:
+        '204':
+          description: Document deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/profiles:
+    get:
+      tags: [Profiles]
+      operationId: listProfiles
+      summary: List all profiles
+      description: Public. Returns a bare array of links, not the `resources` envelope.
+      security: []
+      responses:
+        '200':
+          description: Links to every current profile schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Link'
+              example:
+                - href: /v1/profiles/aggregation
+                - href: /v1/profiles/audio
+                - href: /v1/profiles/story
+
+  /v1/profiles/{profileName}:
+    get:
+      tags: [Profiles]
+      operationId: getProfile
+      summary: Get one profile's JSON Schema
+      description: |
+        Public. Returns the JSON Schema (draft 2019-09) a document must satisfy to claim this
+        profile. The same schemas are vendored under `profiles/` in this repository.
+      security: []
+      parameters:
+        - name: profileName
+          in: path
+          required: true
+          description: Profile name, for example `story`, `audio`, `has-images`. See `GET /v1/profiles` for the full list.
+          schema:
+            $ref: '#/components/schemas/NameSlug'
+          example: story
+      responses:
+        '200':
+          description: The profile schema.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonSchema'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/schemas/{schemaName}:
+    get:
+      tags: [Schemas]
+      operationId: getSchema
+      summary: Get a shared JSON Schema
+      description: |
+        Public. Shared building blocks that profiles reference, such as `link`, `documentId`,
+        `sizable-asset`. Vendored under `schemas/` in this repository.
+      security: []
+      parameters:
+        - name: schemaName
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/NameSlug'
+          example: link
+      responses:
+        '200':
+          description: The schema.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonSchema'
+        '400':
+          description: The docs show a `400` with `Failed to load schema` for an unknown name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/client-profiles:
+    get:
+      tags: [Client profiles]
+      operationId: listClientProfiles
+      summary: List client profiles
+      description: Public. Custom JSON Schemas registered by individual clients.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: A page of client profile schemas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [resources]
+                properties:
+                  resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JsonSchema'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/client-profiles/{profileName}:
+    get:
+      tags: [Client profiles]
+      operationId: getClientProfile
+      summary: Get one client profile
+      security: []
+      parameters:
+        - name: profileName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The client profile schema.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonSchema'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/subscriptions/confirmations:
+    post:
+      tags: [Subscriptions]
+      operationId: confirmSubscription
+      summary: Confirm a notification subscription
+      description: |
+        NPR-internal. A client's webhook receives a `SubscriptionConfirmation` message when a
+        subscription is created and must forward that body here unmodified. Ongoing
+        notifications carry `type` of `document.created`, `document.updated` or
+        `document.deleted`; see the official Notifications page.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: The confirmation message exactly as received by the webhook.
+              properties:
+                Type:
+                  type: string
+                  const: SubscriptionConfirmation
+              additionalProperties: true
+      responses:
+        '200':
+          description: Subscription confirmed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token issued by NPR Member Partnership. One token per client.
+
+  parameters:
+    documentId:
+      name: documentId
+      in: path
+      required: true
+      description: Document ID. Numeric for NPR-originated documents, prefixed for station documents.
+      schema:
+        $ref: '#/components/schemas/DocumentId'
+      example: nx-s1-5453317
+
+    ids:
+      name: ids
+      in: query
+      description: Only documents whose ID is in this list.
+      explode: false
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/DocumentId'
+      example: [nx-s1-5453317, '773675421']
+    excludedIds:
+      name: excludedIds
+      in: query
+      description: Documents whose ID is in this list are removed from the result.
+      explode: false
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/DocumentId'
+    profileIds:
+      name: profileIds
+      in: query
+      description: Only documents that list one of these profiles at the top level. Repeat the parameter to require several.
+      explode: false
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/NameSlug'
+      example: [story, podcast-episode]
+    excludedProfileIds:
+      name: excludedProfileIds
+      in: query
+      description: Documents listing any of these profiles at the top level are removed.
+      explode: false
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/NameSlug'
+    collectionIds:
+      name: collectionIds
+      in: query
+      description: |
+        Only documents belonging to one of these collections, whether the membership is
+        unordered (the document links to the collection) or ordered (the collection's `items`
+        lists the document). Use exactly one ID here when sorting with `sort=editorial`.
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+      example: ['1001', '1002']
+    ownerHrefs:
+      name: ownerHrefs
+      in: query
+      description: |
+        Only documents whose `owners` array contains one of these Organization Service URIs.
+        This is how to scope a query to one station.
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          format: uri
+      example: ['https://organization.api.npr.org/v4/services/s583']
+    excludedOwnerHrefs:
+      name: excludedOwnerHrefs
+      in: query
+      description: Documents owned by any of these services are removed.
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          format: uri
+    nprWebsitePaths:
+      name: nprWebsitePaths
+      in: query
+      description: Only documents whose `nprWebsitePaths` contains one of these npr.org paths.
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+      example: ['/podcasts/510310/npr-politics-podcast']
+    publishDateTime:
+      name: publishDateTime
+      in: query
+      description: Date or date range on `publishDateTime`. See the date syntax in the API description.
+      schema:
+        $ref: '#/components/schemas/DateOrRange'
+      example: '2024-01-01...2024-12-31'
+    editorialLastModifiedDateTime:
+      name: editorialLastModifiedDateTime
+      in: query
+      description: Date or date range on `editorialLastModifiedDateTime`. Useful for incremental sync.
+      schema:
+        $ref: '#/components/schemas/DateOrRange'
+      example: '2024-06-01T00:00:00Z...'
+    recommendUntilDateTime:
+      name: recommendUntilDateTime
+      in: query
+      description: Date or date range on `recommendUntilDateTime`.
+      schema:
+        $ref: '#/components/schemas/DateOrRange'
+    showDates:
+      name: showDates
+      in: query
+      description: The full-date subset of `DateOrRange` (no time part), matched against entries in `showDates`.
+      schema:
+        type: string
+        pattern: '^(\d{4}-\d{2}-\d{2})?(\.\.\.)?(\d{4}-\d{2}-\d{2})?$'
+      example: '2024-01-01'
+    seasonNumber:
+      name: seasonNumber
+      in: query
+      description: Single season number; meaningful with `profileIds=podcast-episode`.
+      schema:
+        type: integer
+        minimum: 0
+    sort:
+      name: sort
+      in: query
+      description: |
+        `<field>[:<direction>[:<missing>]]`, comma-separated for multi-field sort, evaluated
+        left to right. Fields: `publishDateTime`, `editorialLastModifiedDateTime`, `showDates`,
+        `seasonNumber`, `episodeNumber`, and `editorial` (no direction; requires exactly one
+        `collectionIds` value; ordered items first, then the rest by `publishDateTime`).
+        Direction is `asc` or `desc`, default `desc`. `missing` is `first` or `last` and places
+        documents lacking the field, independent of direction.
+      schema:
+        type: string
+        pattern: '^(editorial|(publishDateTime|editorialLastModifiedDateTime|showDates|seasonNumber|episodeNumber)(:(asc|desc)(:(first|last))?)?)(,(publishDateTime|editorialLastModifiedDateTime|showDates|seasonNumber|episodeNumber)(:(asc|desc)(:(first|last))?)?)*$'
+      example: 'seasonNumber:asc:last,episodeNumber:asc'
+    limit:
+      name: limit
+      in: query
+      description: Documents per page. `offset + limit` must not exceed 2000.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 300
+        default: 20
+    offset:
+      name: offset
+      in: query
+      description: Zero-based start position. `offset + limit` must not exceed 2000.
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 1999
+        default: 0
+    transclude:
+      name: transclude
+      in: query
+      description: |
+        Pre-fetch linked documents into an `embed` field on the matching link objects.
+        Known limits documented by NPR (Feb 2024): `bylines` only resolves text bylines, and
+        `transcript` does not work as expected.
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum: [collections, bylines, layout, transcript, items]
+      example: [collections, layout]
+
+  responses:
+    DocumentsOk:
+      description: Matching documents. Empty `resources` when nothing matches.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DocumentsResponse'
+    BadRequest:
+      description: Invalid parameter or body. Details in `meta.messages`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            meta:
+              messages: ['badQueryParam is an unexpected query parameter']
+    Unauthorized:
+      description: Missing or unrecognized bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: The token is valid but not allowed to write this document.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: No document, profile or schema with that ID.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: Transient. NPR asks clients to retry later; no `Retry-After` header is documented.
+
+  schemas:
+    Link:
+      description: NPR's shared link object. `href` may be an absolute URL, a CDS path such as `/v1/documents/1002`, or a fragment such as `#/assets/1003` pointing into the same document's `assets`.
+      $ref: './schemas/link.json'
+
+    DocumentId:
+      description: NPR's document ID schema; numeric IDs are NPR-originated, prefixed IDs belong to the client owning the prefix.
+      $ref: './schemas/documentId.json'
+
+    NameSlug:
+      type: string
+      description: A CDS profile or schema name, for example `story` or `link`. The authoritative profile list is `GET /v1/profiles`.
+      pattern: '^[a-z][a-z0-9-]*$'
+      example: story
+
+    DateOrRange:
+      type: string
+      description: |
+        An RFC 3339 date-time or full date, or a range built with `...`. Examples:
+        `2024-01-01`, `2024-01-01T00:00:00Z`, `2024-01-01...`, `...2024-12-31`,
+        `2024-01-01...2024-12-31T23:59:59Z`.
+      pattern: '^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?(\.\.\.)?(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?$'
+
+    Document:
+      description: |
+        A standalone CDS document as returned by the documents endpoints: the base `document`
+        profile plus `publishable`, which every ingestable top-level document carries.
+        Additional top-level fields depend on the other profiles listed in `profiles`
+        (for example `audio` from `has-audio`, `images` from `has-images`, `layout` from
+        `buildout`, `items` from `aggregation`). The named composites below cover the common
+        cases; for any profile, compose `Document` with `./profiles/<name>.json`.
+        Nested assets under `assets` are themselves documents keyed by ID and are referenced
+        from `audio`, `images`, `layout` and `bylines` with `#/assets/<id>` links.
+      allOf:
+        - $ref: './profiles/document.json'
+        - $ref: './profiles/publishable.json'
+
+    StoryDocument:
+      description: A story with rendering and layout fields.
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - $ref: './profiles/story.json'
+        - $ref: './profiles/renderable.json'
+        - $ref: './profiles/buildout.json'
+
+    AggregationDocument:
+      description: A collection-like document with an ordered `items` list (series, topic, tag, program…).
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - $ref: './profiles/aggregation.json'
+
+    PodcastEpisodeDocument:
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - $ref: './profiles/podcast-episode.json'
+
+    PodcastChannelDocument:
+      allOf:
+        - $ref: '#/components/schemas/AggregationDocument'
+        - $ref: './profiles/podcast-channel.json'
+
+    AudioAsset:
+      description: An audio asset inside `assets`; the playable file is in `enclosures[].href`.
+      allOf:
+        - $ref: './profiles/document.json'
+        - $ref: './profiles/audio.json'
+
+    ImageAsset:
+      description: An image asset; `enclosures` carry crops distinguished by `rels` such as `image-wide`, `image-square`, plus `hrefTemplate` for on-the-fly resizing.
+      allOf:
+        - $ref: './profiles/document.json'
+        - $ref: './profiles/image.json'
+
+    TextAsset:
+      description: One block of body text as HTML, referenced from `layout`.
+      allOf:
+        - $ref: './profiles/document.json'
+        - $ref: './profiles/text.json'
+
+    HtmlBlockAsset:
+      allOf:
+        - $ref: './profiles/document.json'
+        - $ref: './profiles/html-block.json'
+
+    ReferenceBylineAsset:
+      description: A byline that points at a `biography` document via `bylineDocuments`.
+      allOf:
+        - $ref: './profiles/document.json'
+        - $ref: './profiles/reference-byline.json'
+
+    DocumentsResponse:
+      type: object
+      description: Envelope for every document read. A single-document GET returns one element.
+      required: [resources]
+      properties:
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+
+    ErrorResponse:
+      type: object
+      properties:
+        meta:
+          type: object
+          properties:
+            messages:
+              type: array
+              items:
+                type: string
+      example:
+        meta:
+          messages: ['2022-01-01...2022-12-311 are invalid showDates']
+
+    JsonSchema:
+      type: object
+      description: A JSON Schema document (draft 2019-09) as served by CDS.
+      additionalProperties: true
+      example:
+        $schema: 'https://json-schema.org/draft/2019-09/schema#'
+        $id: /v1/profiles/story
+        title: Story
+        type: object

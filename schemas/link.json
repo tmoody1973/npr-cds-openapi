@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/link.json",
+  "title": "Link",
+  "description": "A link to an externally-defined location",
+  "type": "object",
+  "required": [
+    "href"
+  ],
+  "properties": {
+    "href": {
+      "description": "An RFC3987-compliant internationalized URI",
+      "type": "string",
+      "format": "iri-reference"
+    },
+    "rels": {
+      "description": "An array of RFC8288-compliant link relation types",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uri"
+          },
+          {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9.-]*$"
+          }
+        ]
+      }
+    },
+    "embed": {
+      "description": "This attribute will be used to hold pre-fetched content from this link. If this attribute is present, it should be interpreted as the unaltered response from the link specified in the 'href' attribute.",
+      "readOnly": true
+    }
+  }
+}

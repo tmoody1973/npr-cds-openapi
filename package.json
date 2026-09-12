@@ -1,0 +1,27 @@
+{
+  "name": "npr-cds-openapi",
+  "version": "1.0.0-community.1",
+  "private": true,
+  "type": "module",
+  "description": "Community OpenAPI description of NPR's Content Distribution Service, with NPR's profile schemas vendored.",
+  "scripts": {
+    "fetch-schemas": "node scripts/fetch-schemas.mjs",
+    "lint": "redocly lint openapi.yaml",
+    "bundle": "redocly bundle openapi.yaml -o dist/openapi.bundled.yaml && redocly bundle openapi.yaml --dereferenced -o dist/openapi.dereferenced.yaml",
+    "validate": "node scripts/validate-samples.mjs",
+    "mcp": "pnpm bundle && cortex mcp generate --output ./mcp-server && cd mcp-server && npm pkg set version=$(node -p \"require('../package.json').cdsMcpVersion\") && pnpm install && pnpm run build",
+    "test:mcp": "node scripts/test-mcp.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@redocly/cli": "^2.52.1",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "@cortex-docs/cli": "0.1.31"
+  },
+  "cdsMcpVersion": "0.1.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tmoody1973/npr-cds-openapi.git"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/container.json",
+  "title": "Container",
+  "description": "A document that has inner content. Intended to be used as an 'interface'.",
+  "allOf": [
+    {
+      "$ref": "../schemas/has-layout.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "array",
+          "items": {
+            "$ref": "../schemas/no-rels-link.json",
+            "unevaluatedProperties": false
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/schemas/has-layout.json",
+  "title": "Has Layout",
+  "description": "A document with a layout array for visual presentation",
+  "definitions": {
+    "layout-link": {
+      "description": "A link for use in the 'layout' array with valid rel values",
+      "type": "object",
+      "properties": {
+        "rels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "zone-topareastories",
+              "subnav",
+              "footer",
+              "rail",
+              "alt"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "required": [
+    "layout"
+  ],
+  "properties": {
+    "layout": {
+      "description": "The assets or documents intended to make up the layout of this document.",
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "./asset-link.json"
+          },
+          {
+            "$ref": "#/definitions/layout-link"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/tweet.json",
+  "title": "Tweet",
+  "description": "An asset representing a tweet associated with a document. For more information on constructing a link/embed from this data, see https://developer.twitter.com/en/docs/twitter-ids.",
+  "allOf": [
+    {
+      "$ref": "../schemas/sizable-asset.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "tweetId"
+      ],
+      "properties": {
+        "tweetId": {
+          "description": "The ID used to identify this tweet within Twitter's API",
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "userId": {
+          "description": "The user ID used to identify the user that authored this tweet.",
+          "type": "string"
+        },
+        "shouldHideMedia": {
+          "description": "If media should be hidden for this tweet",
+          "type": "boolean"
+        }
+      }
+    }
+  ]
+}

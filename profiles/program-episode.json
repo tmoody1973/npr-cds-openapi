@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://content.api.npr.org/v1/profiles/program-episode.json",
+  "title": "Program Episode",
+  "description": "An episode of a program",
+  "allOf": [
+    {
+      "$ref": "../schemas/document-with-aggregation-profile.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "showDate"
+      ],
+      "properties": {
+        "showDate": {
+          "description": "The date this episode was presented, in RFC3339 'full-date' format (no timestamp, ex: '2020-01-01'). RFC339 spec for 'full-date': https://datatracker.ietf.org/doc/html/rfc3339",
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  ]
+}

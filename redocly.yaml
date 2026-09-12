@@ -1,0 +1,6 @@
+# Named composites (StoryDocument, AudioAsset, …) are documentation for readers and SDK
+# generators; no endpoint references them by design, so the unused-component rule is off.
+extends:
+  - recommended
+rules:
+  no-unused-components: off
