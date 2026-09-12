@@ -23,6 +23,12 @@ const ORG = 'https://organization.api.npr.org/v4/services/';
 const PAGE = 300;
 export const DISPLAY_ONLY = 'display-only: attribute via url, refresh regularly, do not store beyond display';
 
+// The rights note a hit carries: premium first, then display-only for other stations' content.
+export function rightsFor(hit: Hit, homeStation?: string): string | undefined {
+  const notes = [hit.premium ? PREMIUM_NOTE : '', homeStation && hit.owner !== homeStation ? DISPLAY_ONLY : ''].filter(Boolean);
+  return notes.length ? notes.join('; ') : undefined;
+}
+
 export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ searched: string; hits: FoundHit[] }> {
   const { query, station, show, collection, since, until } = args;
   if (!query && !station && !show && !collection) throw new Error('Give me at least one of: query, station, show, collection.');
@@ -101,8 +107,8 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   const names = await deps.catalog.learnFromDocs(docs);
   for (const h of hits) {
     for (const c of h.collections) { const n = names.get(c.id); if (n) c.name = n.title; }
-    const notes = [h.premium ? PREMIUM_NOTE : '', deps.homeStation && h.owner !== deps.homeStation ? DISPLAY_ONLY : ''].filter(Boolean);
-    if (notes.length) h.rights = notes.join('; ');
+    const rights = rightsFor(h, deps.homeStation);
+    if (rights) h.rights = rights;
   }
   return { searched: searched.join('; '), hits };
 }

@@ -22,7 +22,7 @@ const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"'
 // ponytail: the handful of entities NPR teasers actually use, plus numeric ones; swap in a decoder lib if more appear.
 const decodeEntities = (s: string) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) =>
   e[0] === '#' ? String.fromCodePoint(parseInt(e[1].toLowerCase() === 'x' ? e.slice(2) : e.slice(1), e[1].toLowerCase() === 'x' ? 16 : 10)) : ENTITIES[e.toLowerCase()] ?? m);
-const stripHtml = (s: string) => decodeEntities(s.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+export const stripHtml = (s: string) => decodeEntities(s.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
 // NPR stories carry 8-12 collections; a person needs the show, the program, then a few topics.
 const REL_ORDER = ['series', 'podcast-channel', 'program', 'topic', 'category', 'tag'];
 const MAX_COLLECTIONS = 5;
