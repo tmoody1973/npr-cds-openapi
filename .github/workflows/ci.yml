@@ -16,5 +16,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm bundle
-      - run: pnpm install --frozen-lockfile && pnpm run build
+      - run: pnpm install --frozen-lockfile && pnpm test && pnpm run build
         working-directory: mcp-server

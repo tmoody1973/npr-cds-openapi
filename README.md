@@ -77,6 +77,13 @@ Claude Desktop or any JSON client:
 
 Then ask things like "what are the three newest Ladies First episodes" or "show me the MP3 for g-s921-15973". List parameters (`collectionIds`, `profileIds`, `ids`…) are arrays; the server joins them with commas, which is CDS's OR syntax.
 
+**Smart tools (hand-written, on top of the generated ones).** `mcp-server/src/smart/` adds three task-shaped tools, registered from `main.ts` so `pnpm mcp` cannot remove them. `find_stories` takes free text, a station name, a show or collection name, and a date window; it resolves names for you, matches words against title and teaser server-side, and returns compact hits (id, title, teaser, date, url, audio, collection names) newest first. `find_station` and `find_collection` expose the lookups on their own. Station names come from NPR's public directory; collection names are learned as ids pass through and cached under `~/.cache/npr-cds/` (or `$XDG_CACHE_HOME/npr-cds/`). Set `NPR_CDS_HOME_STATION` (e.g. `s921`) and hits from any other owner carry a `rights: display-only` note, per NPR's station terms. Why this shape: [docs/decisions/001-hybrid-smart-layer.md](docs/decisions/001-hybrid-smart-layer.md).
+
+```sh
+(cd mcp-server && pnpm test)      # unit tests for the smart layer (node:test, no network)
+node scripts/bench-smart.mjs      # the benchmark questions through the real server, live CDS
+```
+
 **Releasing a new version.** Bump `cdsMcpVersion` in `package.json`, run `pnpm mcp && pnpm test:mcp`, then `cd mcp-server && npm publish --access public`.
 
 **Why the spec is dereferenced first.** Cortex does not resolve `$ref` inside parameter schemas, so `pnpm bundle` also writes `dist/openapi.dereferenced.yaml` with every reference inlined, and `cortex.config.yml` points at that file. The source of truth stays `openapi.yaml`.

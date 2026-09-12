@@ -7,6 +7,7 @@ import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { createServer } from './server';
+import { registerSmartTools } from './smart/register';
 
 const TOKEN_FILE = path.join(homedir(), '.config', 'npr-cds', 'token');
 
@@ -29,6 +30,7 @@ async function main() {
     return;
   }
   const server = createServer();
+  registerSmartTools(server);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

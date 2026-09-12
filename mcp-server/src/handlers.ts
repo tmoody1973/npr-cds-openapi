@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 
 // hyfin override: token saved by `npr-cds-mcp setup`; read at call time, never cached or logged.
-function readSavedToken(): string | undefined {
+export function readSavedToken(): string | undefined {
   try { return readFileSync(path.join(homedir(), '.config', 'npr-cds', 'token'), 'utf8').trim() || undefined; }
   catch { return undefined; }
 }
