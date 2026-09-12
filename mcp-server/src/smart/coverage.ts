@@ -28,7 +28,7 @@ export async function searchArchive(
     const start = shift(end, -HALF_YEAR_DAYS) < from ? from : shift(end, -HALF_YEAR_DAYS);
     const r = await findStories({ query: args.query, station, kind: args.kind, since: start, until: end, limit: limit - hits.length, scanPages: args.depth ?? 1 }, deps);
     hits.push(...r.hits); read += r.scanned; windows++; oldest = start;
-    const m = r.searched.match(/station ([^(]+) \(/); if (m) stationName = m[1].trim();
+    if (r.station) stationName = r.station.name;
     end = shift(start, -1);
   }
   return {
@@ -38,10 +38,10 @@ export async function searchArchive(
 }
 
 // ---- coverage_scan ----
-type Group = { station: { id: string; name: string }; hits: FoundHit[] };
+type Group = { station: { id: string; name: string }; hits: FoundHit[]; error?: string };
 
 export async function coverageScan(
-  args: { topic: string; since: string; until?: string; stations?: string[]; limit?: number },
+  args: { topic: string; since: string; until?: string; stations?: string[]; limit?: number; depth?: number },
   deps: FindDeps,
 ) {
   const limit = args.limit ?? 10;
@@ -49,22 +49,33 @@ export async function coverageScan(
   const searched: string[] = [];
   if (args.stations?.length) {
     for (const name of args.stations) {
-      const r = await findStories({ query: args.topic, station: name, since: args.since, until: args.until, limit }, deps);
-      const m = r.searched.match(/station ([^(]+) \((s\d+)\)/);
-      groups.push({ station: { id: m?.[2] ?? name, name: m?.[1]?.trim() ?? name }, hits: r.hits });
+      try {
+        const r = await findStories({ query: args.topic, station: name, since: args.since, until: args.until, limit }, deps);
+        groups.push({ station: r.station ?? { id: name, name }, hits: r.hits });
+      } catch (e) {
+        // One bad name must not lose the others; report it on its own row.
+        groups.push({ station: { id: name, name }, hits: [], error: (e as Error).message });
+      }
     }
     searched.push(`"${args.topic}" since ${args.since} at ${args.stations.join(', ')}`);
   } else {
     const npr = await findStories({ query: args.topic, since: args.since, until: args.until, limit }, deps);
     groups.push({ station: { id: NPR_SERVICE_ID, name: 'NPR' }, hits: npr.hits });
     // The network: the newest stories from every station in the window, matched by words here.
-    const p = new URLSearchParams({ profileIds: 'story', sort: 'publishDateTime:desc', limit: String(PAGE), publishDateTime: `${args.since}...${args.until ?? ''}` });
-    const docs: any[] = (await deps.cdsQuery(p)).resources ?? [];
+    const depth = Math.min(args.depth ?? 1, 6);
+    const docs: any[] = [];
+    for (let page = 0; page < depth; page++) {
+      const p = new URLSearchParams({ profileIds: 'story', sort: 'publishDateTime:desc', limit: String(PAGE), offset: String(page * PAGE), publishDateTime: `${args.since}...${args.until ?? ''}` });
+      const batch = (await deps.cdsQuery(p)).resources ?? [];
+      docs.push(...batch);
+      if (batch.length < PAGE) break;
+    }
+    const capped = docs.length >= PAGE * depth;
     const names = new Map((await deps.catalog.stations?.() ?? []).map((s) => [s.id, s.name]));
     const byOwner = new Map<string, FoundHit[]>();
     for (const d of docs) {
       const h: FoundHit = toHit(d);
-      if (h.owner === NPR_SERVICE_ID || !matchesText(`${h.title} ${h.teaser ?? ''}`, args.topic)) continue;
+      if (!h.owner || h.owner === NPR_SERVICE_ID || !matchesText(`${h.title} ${h.teaser ?? ''}`, args.topic)) continue;
       const rights = rightsFor(h, deps.homeStation); if (rights) h.rights = rights;
       byOwner.set(h.owner, [...(byOwner.get(h.owner) ?? []), h]);
     }
