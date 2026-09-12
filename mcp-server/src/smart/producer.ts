@@ -96,6 +96,8 @@ export async function stationLabels(args: { station?: string }, deps: FindDeps) 
       counts.set(id, { rel, count: (counts.get(id)?.count ?? 0) + 1 });
     }
   };
+  // Story labels come from stories; podcasts from the episode scan. An episode's topic or tag
+  // rels are not counted, so topics reflect what the station writes, not what its podcasts are filed under.
   tally(docs); tally(podcastDocs, 'podcast-channel');
   const out: Record<string, Label[]> = { shows: [], podcasts: [], programs: [], topics: [], tags: [], categories: [], other: [] };
   for (const [id, { rel, count }] of counts) out[GROUPS[rel] ?? 'other'].push({ id, name: names.get(id)?.title ?? id, count });

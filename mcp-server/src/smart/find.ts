@@ -12,7 +12,7 @@ export type FindDeps = {
   cdsQuery: (params: URLSearchParams) => Promise<{ resources: any[] }>;
   catalog: {
     findStation: (q: string) => Promise<Station[]>;
-    findCollection: (q: string) => Promise<Collection[]>;
+    findCollection: (q: string, opts?: { types?: string[]; notTypes?: string[] }) => Promise<Collection[]>;
     learnFromDocs: (docs: any[]) => Promise<Map<string, Collection>>;
   };
   homeStation?: string; // service id whose content we may store; everything else is display-only
@@ -42,22 +42,29 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   }
 
   const collections: Collection[] = [];
+  // A show name means a podcast channel when kind=podcasts, and never one otherwise.
+  const showTypes = podcasts ? { types: ['podcast-channel'] } : { notTypes: ['podcast-channel'] };
+  // An explicit name must have all its words in the title; fuzzy alone would let "Up First" mean "first responders".
+  const lookup = async (name: string, opts: object) => (await deps.catalog.findCollection(name, opts)).find((c) => matchesText(c.title, name));
   for (const name of [show, collection].filter(Boolean) as string[]) {
-    let [c] = await deps.catalog.findCollection(name);
+    const opts = name === show ? showTypes : {};
+    let c = await lookup(name, opts);
     if (!c) {
-      // Station shows are not fetchable documents; learn them from the station's newest stories.
-      const owner = base.get('ownerHrefs') ?? (deps.homeStation ? ORG + deps.homeStation : undefined);
-      if (owner) {
+      // Station shows are not fetchable documents; learn them from the newest content of the named or
+      // home station, then NPR's, and look again.
+      const owners = [...new Set([base.get('ownerHrefs') ?? (deps.homeStation ? ORG + deps.homeStation : ''), ORG + NPR_SERVICE_ID].filter(Boolean))];
+      for (const owner of owners) {
         const p = new URLSearchParams(base); p.set('ownerHrefs', owner);
         await deps.catalog.learnFromDocs((await deps.cdsQuery(p)).resources ?? []);
-        [c] = await deps.catalog.findCollection(name);
+        c = await lookup(name, opts);
+        if (c) break;
       }
     }
     if (!c) throw new Error(`No show or collection matches "${name}". Try find_collection, or give a station so I can learn its shows.`);
     collections.push(c);
   }
   // Fuzzy name matches widen a keyword query, but only when the query words really are in the title.
-  if (query) collections.push(...(await deps.catalog.findCollection(query)).filter((c) => matchesText(c.title, query)).slice(0, 3));
+  if (query) collections.push(...(await deps.catalog.findCollection(query, podcasts ? {} : { notTypes: ['podcast-channel'] })).filter((c) => matchesText(c.title, query)).slice(0, 3));
   if (collections.length) searched.push(`collections ${collections.map((c) => `"${c.title}" (${c.id})`).join(', ')}`);
 
   const scanKeyword = async (): Promise<any[]> => {

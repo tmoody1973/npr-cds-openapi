@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Catalog, type FetchJson } from './catalog';
@@ -17,7 +17,7 @@ function fakeNet() {
     // station series ids are not published documents, so CDS returns nothing for them
     if (u.searchParams.get('ids')) return { resources: u.searchParams.get('ids')!.split(',').filter((id) => !id.startsWith('g-s921-')).map((id) => topic(id, `Title ${id}`)) };
     if (u.searchParams.get('profileIds') === 'topic') return { resources: [topic('1019', 'Technology'), topic('133775819', 'Artificial Intelligence')] };
-    if (u.searchParams.get('profileIds') === 'program') return { resources: [{ id: '2', title: 'All Things Considered', profiles: [{ href: '/v1/profiles/program', rels: ['type'] }] }] };
+    if (u.searchParams.get('profileIds') === 'program') return { resources: [{ id: '2', title: 'All Things Considered', profiles: [{ href: '/v1/profiles/program', rels: ['type'] }] }, { id: '3', title: 'Up First', profiles: [{ href: '/v1/profiles/program', rels: ['type'] }] }] };
     if (u.searchParams.get('profileIds') === 'podcast-channel') return { resources: [{ id: '510318', title: 'Up First', profiles: [{ href: '/v1/profiles/podcast-channel', rels: ['type'] }] }] };
     return { resources: [] };
   };
@@ -87,6 +87,25 @@ test('learnFromDocs keeps a later story\'s /show/ slug when the first story had 
 
 test('findCollection knows NPR podcast channels from the seed', async () => {
   const c = new Catalog(fakeNet().fetchJson, dir());
-  const [hit] = await c.findCollection('up first');
-  assert.equal(hit?.id, '510318'); assert.equal(hit?.type, 'podcast-channel');
+  const hits = await c.findCollection('up first');
+  assert.ok(hits.some((h) => h.id === '510318' && h.type === 'podcast-channel'), 'the podcast channel is in the unfiltered results');
+});
+
+test('findCollection can be limited to, or kept away from, a collection type', async () => {
+  const c = new Catalog(fakeNet().fetchJson, dir());
+  assert.equal((await c.findCollection('up first', { types: ['podcast-channel'] }))[0]?.id, '510318', 'the podcast');
+  assert.equal((await c.findCollection('up first', { notTypes: ['podcast-channel'] }))[0]?.id, '3', 'the broadcast program');
+});
+
+test('a catalog seeded by an older version re-seeds when the seed list changes', async () => {
+  const d = dir(); const net = fakeNet();
+  const first = new Catalog(net.fetchJson, d);
+  await first.findCollection('technology');
+  // pretend an older release wrote the cache without podcast channels and without a seed version
+  const file = path.join(d, 'collections.json');
+  const state = JSON.parse(readFileSync(file, 'utf8'));
+  delete state.seedVersion; delete state.items['510318'];
+  writeFileSync(file, JSON.stringify(state));
+  const again = new Catalog(net.fetchJson, d);
+  assert.ok((await again.findCollection('up first', { types: ['podcast-channel'] })).some((h) => h.id === '510318'), 're-seeded podcast channels');
 });

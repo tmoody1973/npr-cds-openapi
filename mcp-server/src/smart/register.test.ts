@@ -17,9 +17,13 @@ test('safe wraps a value as text plus structuredContent', async () => {
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { registerSmartTools } from './register';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 test('find_stories advertises every argument the function accepts, so none is silently dropped', async () => {
+  process.env.XDG_CACHE_HOME = mkdtempSync(path.join(tmpdir(), 'cds-register-')); // keep the test off the real cache
+  const { registerSmartTools } = await import('./register');
   const server = new McpServer({ name: 't', version: '0' });
   registerSmartTools(server);
   const [a, b] = InMemoryTransport.createLinkedPair();

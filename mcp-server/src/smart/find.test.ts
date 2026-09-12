@@ -127,3 +127,28 @@ test('an unknown podcast is learned from the station\'s newest podcast episodes'
   assert.equal(d.queries[0].get('profileIds'), 'podcast-episode', 'the learning scan is a podcast scan');
   assert.equal(d.queries[0].get('ownerHrefs'), 'https://organization.api.npr.org/v4/services/s921');
 });
+
+test('show lookup asks for a podcast channel when kind=podcasts and avoids one otherwise', async () => {
+  const d = deps(); const asked: any[] = [];
+  d.catalog.findCollection = async (q, opts) => { asked.push(opts); return [{ id: 'g-s921-13049', title: q, type: 'series' }]; };
+  await findStories({ show: 'Up First', kind: 'podcasts' }, d);
+  await findStories({ show: 'Up First' }, d);
+  assert.deepEqual(asked[0], { types: ['podcast-channel'] });
+  assert.deepEqual(asked[1], { notTypes: ['podcast-channel'] });
+});
+
+test('an explicit show name is not satisfied by a fuzzy match that lacks its words', async () => {
+  const d = deps();
+  d.catalog.findCollection = async () => [{ id: '1070952742', title: 'first responders', type: 'tag' }];
+  await assert.rejects(() => findStories({ show: 'Up First' }, d), /No show or collection matches "Up First"/);
+});
+
+test('a podcast show miss also learns from NPR\'s newest podcast episodes, not only the home station\'s', async () => {
+  const d = deps(); const scanned: string[] = [];
+  d.catalog.findCollection = async () => [];
+  d.catalog.learnFromDocs = async () => new Map();
+  const orig = d.cdsQuery;
+  d.cdsQuery = async (p) => { if (p.get('profileIds') === 'podcast-episode' && !p.get('collectionIds')) scanned.push(p.get('ownerHrefs')!); return orig(p); };
+  await findStories({ show: 'Up First', kind: 'podcasts' }, d).catch(() => {});
+  assert.ok(scanned.some((o) => o.endsWith('/s921')) && scanned.some((o) => o.endsWith('/s1')), `scanned ${scanned.join(', ')}`);
+});

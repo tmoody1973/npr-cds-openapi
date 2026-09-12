@@ -8,7 +8,10 @@ export type Collection = { id: string; title: string; type: string };
 export type FetchJson = (url: string, opts?: { auth?: boolean }) => Promise<any>;
 
 type StationState = { fetchedAt: number; items: Station[] };
-type CollectionState = { seededAt?: number; items: Record<string, Collection> };
+type CollectionState = { seededAt?: number; seedVersion?: number; items: Record<string, Collection> };
+// Bump when SEED_PROFILES changes so caches written by older releases re-seed.
+const SEED_PROFILES = ['topic', 'program', 'podcast-channel'];
+const SEED_VERSION = 2;
 
 const DAY = 24 * 60 * 60 * 1000;
 const NPR = `https://organization.api.npr.org/v4/services/${NPR_SERVICE_ID}`;
@@ -81,7 +84,7 @@ export class Catalog {
   private commit(state: CollectionState) {
     const disk = this.load<CollectionState>('collections.json', { items: {} });
     state.items = { ...disk.items, ...state.items };
-    state.seededAt ??= disk.seededAt;
+    state.seededAt ??= disk.seededAt; state.seedVersion ??= disk.seedVersion;
     this.save('collections.json', state);
     this.collectionIndex = undefined;
   }
@@ -130,22 +133,26 @@ export class Catalog {
 
   private async seed(): Promise<CollectionState> {
     const state = this.collections();
-    if (state.seededAt) return state;
-    for (const profile of ['topic', 'program', 'podcast-channel']) {
+    if (state.seededAt && state.seedVersion === SEED_VERSION) return state;
+    for (const profile of SEED_PROFILES) {
       const { resources = [] } = await this.fetchJson(`${CDS}/v1/documents?ownerHrefs=${NPR}&profileIds=${profile}&limit=300`, { auth: true });
       this.remember(state, resources);
     }
-    state.seededAt = Date.now();
+    state.seededAt = Date.now(); state.seedVersion = SEED_VERSION;
     this.commit(state);
     return state;
   }
 
-  async findCollection(query: string): Promise<Collection[]> {
+  // types / notTypes narrow by collection kind: a flagship show is often both a broadcast series and a
+  // podcast channel with the same name, and the caller knows which one it wants.
+  async findCollection(query: string, opts: { types?: string[]; notTypes?: string[] } = {}): Promise<Collection[]> {
     const { items } = await this.seed();
     if (!this.collectionIndex) {
       this.collectionIndex = new MiniSearch<Collection>({ fields: ['title'], storeFields: ['id', 'title', 'type'], searchOptions: search });
       this.collectionIndex.addAll(Object.values(items));
     }
-    return this.collectionIndex.search(query).slice(0, 5).map((r) => ({ id: r.id, title: r.title, type: r.type }));
+    return this.collectionIndex.search(query)
+      .filter((r) => (!opts.types || opts.types.includes(r.type)) && !(opts.notTypes ?? []).includes(r.type))
+      .slice(0, 5).map((r) => ({ id: r.id, title: r.title, type: r.type }));
   }
 }
