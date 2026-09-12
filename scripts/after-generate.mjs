@@ -1,6 +1,6 @@
 // Re-apply the hand-kept settings Cortex overwrites when it regenerates mcp-server/ from the spec.
 // Cortex owns package.json and tsconfig.json there; the smart layer needs these three things in them.
-import { readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { ROOT } from "./lib.mjs";
 
@@ -19,4 +19,5 @@ edit("package.json", (pkg) => {
 edit("tsconfig.json", (ts) => {
   ts.exclude = [...new Set([...(ts.exclude ?? []), "src/**/*.test.ts"])];
 });
-console.log("after-generate: minisearch dependency, test script, and test exclusion restored");
+copyFileSync(path.join(ROOT, "docs", "PACKAGE_README.md"), path.join(server, "README.md"));
+console.log("after-generate: minisearch dependency, test script, test exclusion, and package README restored");
