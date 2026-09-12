@@ -53,7 +53,7 @@ Verified 2026-09-12 against CDS production. The pagination caps, sort grammar, d
 
 ## MCP server: ask CDS questions in plain words
 
-`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.6.0). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
+`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.7.0). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
 
 ### For radio professionals
 
@@ -88,6 +88,9 @@ With a station set, anything from another station comes back marked *display-onl
 | "Newest This Bites episodes" | Radio Milwaukee's food podcast, three newest episodes with lengths and links. Your station's podcasts are in CDS too: 13 channels, about 1,975 episodes. |
 | "NPR podcasts about AI" | Episodes from Up First, Consider This and the rest, each marked *premium audio: play or link, never store*. |
 | "Read me the Danielle Ponder story" | The three paragraphs, clean, plus the audio link. For an NPR radio segment with no written body you get the transcript; for a segment with neither, a plain note and the web link. Roughly half of NPR's stories carry body text in CDS. |
+| "What did we run on Summerfest in 2023?" | Walks the archive back in half-year windows until it has enough, and says how many windows and stories it read. |
+| "Who in the network covered housing this week?" | NPR's stories, then KCRW's, WXPN's, whoever published, grouped by station with links, all marked display-only. |
+| "What did NPR cover on AI this week that we haven't?" | NPR's AI stories next to ours; each NPR story marked localized or not, with a one-line summary of the gap count. A hint, not a verdict. |
 | "Get me the latest NPR newscast" | NPR News 4PM EDT, 5 minutes, published 16:10, with the stream link and a note: premium audio, play or link, never store. |
 | "/morning-prep" (a saved prompt) | The assistant runs what's-new, NPR's stories, and the newscast itself, then writes a rundown a host can read out loud, with three talk breaks. |
 | "/newsletter-draft housing" | Our housing stories then NPR's, one or two sentences each, every item linking back, audio links included. |
@@ -100,7 +103,7 @@ With a station set, anything from another station comes back marked *display-onl
 - *A host between segments.* "Latest NPR newscast?" gives the cut, its length, and the link to play it. It is premium audio: play it, don't keep it.
 - *A developer wiring a site to CDS.* `station_labels` gives the exact label names and ids to filter on, and `whats_new_since` is the call an incremental sync loop makes.
 
-**The eight tools**, for when you want to name one directly:
+**The eleven tools**, for when you want to name one directly:
 
 | Tool | Give it | Get back |
 |---|---|---|
@@ -110,6 +113,9 @@ With a station set, anything from another station comes back marked *display-onl
 | `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, each marked new or updated |
 | `latest_newscast` | nothing, or `short`, or a station name | the newest newscast: time, length, stream link, and a never-store note when it is premium |
+| `search_archive` | words, optionally a station, a from and to date | the archive walked back in half-year windows, newest first, for anniversary pieces and context |
+| `coverage_scan` | a topic and a window, optionally station names | what NPR and every station published on it, grouped by station |
+| `coverage_gap` | a topic and a window | NPR's stories next to ours, each marked localized or not, for a human to judge |
 | `find_station` | a name, call letters, or city | station id and name |
 | `find_collection` | a topic, tag, show, or program name | its id |
 
@@ -150,6 +156,12 @@ Two saved prompts, `morning-prep` and `newsletter-draft`, chain these tools into
 
 17. "Read me the Danielle Ponder story." → Its paragraphs in order, no html, with the audio link. Then try an NPR radio segment: you get the transcript, or an honest note that CDS has only the teaser and audio for that one, with the web link.
 
+*Editorial*
+
+18. "What did we run on Summerfest in 2023?" → Archive hits from that year with the window count. If it stops early it tells you the date to resume from.
+19. "Who in the network covered housing this week?" → Groups by station, NPR first. Every other station's hit carries the display-only note.
+20. "What did NPR cover on AI this week that we haven't localized?" → NPR's list with each story marked localized or gap, and a count. Read before you trust the flags.
+
 *When it should say no*
 
 15. "Download the newscast MP3 for me." → It gives you the link and explains it can't download or store premium audio. That's the terms working, not a bug.
@@ -159,7 +171,7 @@ If any of these misbehave, open an issue with the prompt and the answer. The `se
 
 **How it works, in order.** You ask for "Ladies First". The server looks the name up in a catalog it keeps (a lookup table, a list of names and ids it has seen before). If the name is missing, it reads your station's newest stories, notes which collections they point to, resolves the ones CDS will serve and infers the rest from the story urls, and remembers them for next time. It then asks CDS for that collection's stories, newest first. Before anything reaches the assistant it trims each 17 KB document down to the dozen fields a person needs, about 100 bytes. For a words question it also scans the newest 300 stories' titles and teasers itself and merges the two lists, so the assistant reads ten good hits instead of three hundred raw ones.
 
-**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`. 0.5.1: show names resolve by kind. 0.6.0: `read_story`, and the saved prompts compute real timestamps.
+**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`. 0.5.1: show names resolve by kind. 0.6.0: `read_story`, and the saved prompts compute real timestamps. 0.7.0: `search_archive`, `coverage_scan`, `coverage_gap`.
 
 **Podcasts.** Ask with `kind: podcasts`, or just say "podcast" and the assistant will. Episodes come back like stories, with the show name resolved from the podcast channel. NPR's podcast episodes all carry the premium flag, so each one says play or link, never store; a station's own podcasts usually don't. Newscasts are excluded from podcast searches and have their own tool.
 

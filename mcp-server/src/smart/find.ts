@@ -14,6 +14,7 @@ export type FindDeps = {
     findStation: (q: string) => Promise<Station[]>;
     findCollection: (q: string, opts?: { types?: string[]; notTypes?: string[] }) => Promise<Collection[]>;
     learnFromDocs: (docs: any[]) => Promise<Map<string, Collection>>;
+    stations?: () => Promise<Station[]>;
   };
   homeStation?: string; // service id whose content we may store; everything else is display-only
 };
@@ -29,7 +30,7 @@ export function rightsFor(hit: Hit, homeStation?: string): string | undefined {
   return notes.length ? notes.join('; ') : undefined;
 }
 
-export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ searched: string; hits: FoundHit[] }> {
+export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ searched: string; hits: FoundHit[]; scanned: number }> {
   const { query, station, show, collection, since, until } = args;
   if (!query && !station && !show && !collection) throw new Error('Give me at least one of: query, station, show, collection.');
   const limit = args.limit ?? 10;
@@ -73,6 +74,7 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   if (query) collections.push(...(await deps.catalog.findCollection(query, podcasts ? {} : { notTypes: ['podcast-channel'] })).filter((c) => matchesText(c.title, query)).slice(0, 3));
   if (collections.length) searched.push(`collections ${collections.map((c) => `"${c.title}" (${c.id})`).join(', ')}`);
 
+  let scannedTotal = 0;
   const scanKeyword = async (): Promise<any[]> => {
     if (!query) return [];
     const found: any[] = [];
@@ -88,6 +90,7 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
       if (resources.length < PAGE) break;
     }
     searched.push(`keyword "${query}" over ${scanned} newest ${station ? '' : 'NPR '}${noun}`);
+    scannedTotal = scanned;
     return found;
   };
   const fetchByCollection = async (): Promise<any[]> => {
@@ -110,5 +113,5 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
     const rights = rightsFor(h, deps.homeStation);
     if (rights) h.rights = rights;
   }
-  return { searched: searched.join('; '), hits };
+  return { searched: searched.join('; '), hits, scanned: scannedTotal };
 }

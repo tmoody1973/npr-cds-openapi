@@ -46,6 +46,12 @@ await show("read_story: Danielle Ponder (body)", "read_story", { id: "g-s921-161
   (j) => console.log(`source=${j.source} words=${j.words} paragraphs=${j.paragraphs.length} first="${j.paragraphs[0]?.slice(0, 70)}…"`));
 await show("read_story: NPR ATC segment (transcript)", "read_story", { id: "nx-s1-5964864" },
   (j) => console.log(`source=${j.source} words=${j.words} paragraphs=${j.paragraphs.length} first="${j.paragraphs[0]?.slice(0, 70)}…" rights=${j.rights ? "yes" : "none"}`));
+await show("search_archive: Summerfest, home station, 2023 to today", "search_archive", { query: "Summerfest", from: "2023-01-01", limit: 5 },
+  (j) => { console.log(j.searched); for (const h of j.hits) console.log(`${h.date}  ${h.title.slice(0, 70)}`); if (j.note) console.log(`note: ${j.note}`); });
+await show("coverage_scan: housing this week, NPR + network", "coverage_scan", { topic: "housing", since: new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10), limit: 3 },
+  (j) => { console.log(j.searched); for (const g of j.byStation.slice(0, 6)) console.log(`${g.station.name} (${g.station.id}): ${g.hits.length} → ${g.hits[0]?.title.slice(0, 60) ?? ""}`); });
+await show("coverage_gap: AI this week, NPR vs home station", "coverage_gap", { topic: "AI", since: new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10), limit: 6 },
+  (j) => { console.log(j.summary); for (const h of j.npr) console.log(`${h.localized ? "local ✓" : "gap    "}  ${h.title.slice(0, 64)}`); });
 await show("latest_newscast (NPR, long)", "latest_newscast", {},
   (j) => console.log(`${j.title} · ${Math.round(j.seconds / 60)} min · published ${j.published.slice(0, 16)} · ${j.rights ?? "no rights note"}`));
 const { prompts } = await client.listPrompts();

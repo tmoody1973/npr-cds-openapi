@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Catalog } from './catalog';
 import { CDS, cdsQuery, fetchJson } from './cds';
 import { readStory } from './reader';
+import { coverageGap, coverageScan, searchArchive } from './coverage';
 import { findStories } from './find';
 import { checkStory, latestNewscast, stationLabels, whatsNewSince } from './producer';
 import { morningPrep, newsletterDraft } from './prompts';
@@ -136,5 +137,38 @@ export function registerSmartTools(server: McpServer) {
       annotations: { readOnlyHint: true },
     },
     safe((args) => readStory(args, deps)),
+  );
+
+  const window = { since: z.string().describe('YYYY-MM-DD'), until: z.string().optional().describe('YYYY-MM-DD') };
+  server.registerTool(
+    'search_archive',
+    {
+      description: 'Dig through the archive for anniversary pieces, corrections and context. Walks back in half-year windows so each stays under CDS\'s cap, matching words in title and teaser. Newest first; stops at the limit, the from-date, or 12 windows (then tells you where to resume).',
+      inputSchema: {
+        query: z.string(), station: z.string().optional().describe('Default: home station.'), kind: z.enum(['stories', 'podcasts']).optional(),
+        from: z.string().optional().describe('YYYY-MM-DD. Default 2010-01-01.'), to: z.string().optional().describe('YYYY-MM-DD. Default today.'),
+        limit: z.number().int().min(1).max(100).optional().describe('Default 20.'), depth: z.number().int().min(1).max(6).optional().describe('Pages of 300 per window. Default 1.'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => searchArchive(args, deps)),
+  );
+  server.registerTool(
+    'coverage_scan',
+    {
+      description: 'What the network published on a topic: NPR plus every station\'s newest stories in the window, grouped by station, or only the stations you name. For a news director planning a local angle.',
+      inputSchema: { topic: z.string(), ...window, stations: z.array(z.string()).optional().describe('Station names to limit to.'), limit: z.number().int().min(1).max(50).optional().describe('Per station. Default 10.') },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => coverageScan(args, deps)),
+  );
+  server.registerTool(
+    'coverage_gap',
+    {
+      description: 'Editorial gaps: NPR\'s stories on a topic next to the home station\'s, each NPR story marked localized (a story of ours shares two or more meaningful title words) or not. A hint for a human to judge, not a verdict.',
+      inputSchema: { topic: z.string(), ...window, limit: z.number().int().min(1).max(50).optional().describe('NPR stories to check. Default 20.') },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => coverageGap(args, deps)),
   );
 }

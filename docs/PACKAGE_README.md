@@ -45,7 +45,8 @@ Any MCP client, as JSON:
 6. "What changed since 8am?" → new and updated, newest change first.
 7. "NPR podcasts about AI" → episodes marked premium: play or link, never store.
 8. "Read me that story" + a url → the paragraphs, clean; or the transcript; or an honest note.
-9. Run the `morning-prep` prompt → a read-out-loud rundown with talk breaks.
+9. "What did NPR cover on AI this week that we haven't?" → gaps, flagged for a human to judge.
+10. Run the `morning-prep` prompt → a read-out-loud rundown with talk breaks.
 
 ## Tools
 
@@ -57,6 +58,9 @@ Any MCP client, as JSON:
 | `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, marked new or updated |
 | `latest_newscast` | nothing, `short`, or a station | newest newscast: time, length, stream link; never-store note when premium |
+| `search_archive` | words, a station, from and to dates | the archive in half-year windows, newest first |
+| `coverage_scan` | a topic and a window | what NPR and the network published, by station |
+| `coverage_gap` | a topic and a window | NPR's stories next to ours, marked localized or not |
 | `find_station` | a name, call letters, or city | station id |
 | `find_collection` | a topic, tag, show, or program name | collection id |
 
