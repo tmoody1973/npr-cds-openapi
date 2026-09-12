@@ -104,3 +104,8 @@ test('toHit marks premium audio and ranks a podcast channel with shows', () => {
   assert.equal(h.collections[0].id, '510318');
   assert.equal(toHit(doc).premium, undefined, 'absent when not premium');
 });
+
+test('toHit drops script and style contents, not just their tags', () => {
+  const h = toHit({ ...doc, teaser: 'Real <script>alert(1)</script>text <style>p{}</style>here' });
+  assert.equal(h.teaser, 'Real text here');
+});

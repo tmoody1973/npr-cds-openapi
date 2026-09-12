@@ -3,7 +3,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { Catalog } from './catalog';
-import { cdsQuery, fetchJson } from './cds';
+import { CDS, cdsQuery, fetchJson } from './cds';
+import { readStory } from './reader';
 import { findStories } from './find';
 import { checkStory, latestNewscast, stationLabels, whatsNewSince } from './producer';
 import { morningPrep, newsletterDraft } from './prompts';
@@ -18,7 +19,7 @@ export const safe = <A>(fn: (a: A) => Promise<unknown>) => async (a: A) => { try
 // regenerating the server from the spec cannot remove them.
 export function registerSmartTools(server: McpServer) {
   const catalog = new Catalog(fetchJson, cacheDir);
-  const deps = { cdsQuery, catalog, homeStation: readHomeStation() };
+  const deps = { cdsQuery, catalog, homeStation: readHomeStation(), cdsGet: (id: string) => fetchJson(`${CDS}/v1/documents/${encodeURIComponent(id)}`, { auth: true }) };
 
   server.registerTool(
     'find_stories',
@@ -120,5 +121,20 @@ export function registerSmartTools(server: McpServer) {
       argsSchema: { topic: z.string().optional(), since: z.string().optional().describe('Default the last 7 days.'), station: z.string().optional() },
     },
     (args) => prompt(newsletterDraft(args)),
+  );
+
+  server.registerTool(
+    'read_story',
+    {
+      description: 'READ THE TEXT of one story: its paragraphs in reading order with html removed, or its transcript when there is no written body, or a plain note when CDS holds only the teaser and audio. Give a story url (npr.org or a station site) or a CDS id. About half of NPR stories have body text in CDS; most of the rest get a transcript within hours.',
+      inputSchema: {
+        url: z.string().optional().describe('The story\'s public url.'),
+        id: z.string().optional().describe('CDS document id.'),
+        station: z.string().optional().describe('Station the url belongs to, if not the home station.'),
+        maxChars: z.number().int().min(500).max(60000).optional().describe('Cap on returned text. Default 12000.'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => readStory(args, deps)),
   );
 }

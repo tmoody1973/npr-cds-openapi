@@ -35,22 +35,24 @@ export type StoryCheck = {
   audio?: Hit['audio']; primaryImage?: boolean; teaser?: boolean;
 };
 
-export async function checkStory(args: { id?: string; url?: string; station?: string }, deps: FindDeps): Promise<StoryCheck> {
+// Find one document by CDS id, npr.org url (id is in the path), or a station url (matched by
+// canonical url against the station's newest stories). Shared by check_story and read_story.
+export async function resolveDoc(args: { id?: string; url?: string; station?: string }, deps: FindDeps): Promise<{ doc: any; searched: string }> {
   let id = args.id;
   if (!id && args.url) id = args.url.match(/^https?:\/\/(?:www\.)?npr\.org\/\d{4}\/\d{2}\/\d{2}\/([^/?#]+)/)?.[1];
   if (!id && !args.url) throw new Error('Give me a CDS id or a story url.');
+  if (id) return { searched: `id ${id}`, doc: (await deps.cdsQuery(new URLSearchParams({ ids: id, limit: '1' }))).resources?.[0] };
+  const station = await resolveStation(deps, args.station);
+  if (!station) throw new Error('A station url needs a station name, or NPR_CDS_HOME_STATION set.');
+  const docs = (await deps.cdsQuery(newestFrom(station))).resources ?? [];
+  return {
+    searched: `newest ${docs.length} stories from ${station.name}`,
+    doc: docs.find((d: any) => (d.webPages ?? []).some((w: any) => w.href && sameUrl(w.href, args.url!))),
+  };
+}
 
-  let doc: any; let searched: string;
-  if (id) {
-    searched = `id ${id}`;
-    doc = (await deps.cdsQuery(new URLSearchParams({ ids: id, limit: '1' }))).resources?.[0];
-  } else {
-    const station = await resolveStation(deps, args.station);
-    if (!station) throw new Error('A station url needs a station name, or NPR_CDS_HOME_STATION set.');
-    const docs = (await deps.cdsQuery(newestFrom(station))).resources ?? [];
-    searched = `newest ${docs.length} stories from ${station.name}`;
-    doc = docs.find((d: any) => (d.webPages ?? []).some((w: any) => w.href && sameUrl(w.href, args.url!)));
-  }
+export async function checkStory(args: { id?: string; url?: string; station?: string }, deps: FindDeps): Promise<StoryCheck> {
+  const { doc, searched } = await resolveDoc(args, deps);
   if (!doc) {
     return { found: false, searched, problems: [`Not in CDS (looked at ${searched}). Is it published? Drafts and scheduled posts never reach CDS. Has it been five minutes since publishing?`] };
   }

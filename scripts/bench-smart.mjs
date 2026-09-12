@@ -42,6 +42,10 @@ await show("whats_new_since yesterday, home station", "whats_new_since", { since
   (j) => { console.log(`searched: ${j.searched}`); for (const h of j.hits) console.log(`${h.change.padEnd(7)} ${h.modified.slice(0, 16)}  ${h.title}`); });
 await bench("This Bites podcast, newest 3", "find_stories", { show: "This Bites", kind: "podcasts", limit: 3 });
 await bench("NPR podcasts about AI (premium note expected)", "find_stories", { query: "AI", kind: "podcasts", limit: 3 });
+await show("read_story: Danielle Ponder (body)", "read_story", { id: "g-s921-16132" },
+  (j) => console.log(`source=${j.source} words=${j.words} paragraphs=${j.paragraphs.length} first="${j.paragraphs[0]?.slice(0, 70)}…"`));
+await show("read_story: NPR ATC segment (transcript)", "read_story", { id: "nx-s1-5964864" },
+  (j) => console.log(`source=${j.source} words=${j.words} paragraphs=${j.paragraphs.length} first="${j.paragraphs[0]?.slice(0, 70)}…" rights=${j.rights ? "yes" : "none"}`));
 await show("latest_newscast (NPR, long)", "latest_newscast", {},
   (j) => console.log(`${j.title} · ${Math.round(j.seconds / 60)} min · published ${j.published.slice(0, 16)} · ${j.rights ?? "no rights note"}`));
 const { prompts } = await client.listPrompts();

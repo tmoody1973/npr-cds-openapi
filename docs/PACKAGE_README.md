@@ -44,13 +44,15 @@ Any MCP client, as JSON:
 5. "What labels does our station use?" → shows, podcasts, topics, tags with counts.
 6. "What changed since 8am?" → new and updated, newest change first.
 7. "NPR podcasts about AI" → episodes marked premium: play or link, never store.
-8. Run the `morning-prep` prompt → a read-out-loud rundown with talk breaks.
+8. "Read me that story" + a url → the paragraphs, clean; or the transcript; or an honest note.
+9. Run the `morning-prep` prompt → a read-out-loud rundown with talk breaks.
 
 ## Tools
 
 | Tool | Give it | Get back |
 |---|---|---|
 | `find_stories` | words, a station, a show or podcast, a topic, a date window; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio, collection names, rights note when premium or another station's |
+| `read_story` | a story url or CDS id | paragraphs in reading order, or the transcript, or a note that CDS has only teaser and audio |
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
 | `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, marked new or updated |

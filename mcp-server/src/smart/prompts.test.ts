@@ -21,3 +21,16 @@ test('newsletter-draft requires links back and forbids storing or quoting at len
   assert.match(t, /canonical link|link back/i); assert.match(t, /audio link/i);
   assert.match(t, /do not (store|copy)/i); assert.match(t, /one sentence|two sentences/i);
 });
+
+test('morning-prep computes yesterday 6am local as a real timestamp by default', () => {
+  const t = morningPrep({});
+  const m = t.match(/since="(\d{4}-\d{2}-\d{2}T06:00:00[+-]\d{2}:\d{2})"/);
+  assert.ok(m, `no ISO timestamp in: ${t.slice(0, 200)}`);
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  assert.equal(m![1].slice(0, 10), `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`);
+});
+
+test('newsletter-draft computes a date seven days back by default', () => {
+  const t = newsletterDraft({});
+  assert.match(t, /since="\d{4}-\d{2}-\d{2}"/); assert.doesNotMatch(t, /last 7 days"/);
+});

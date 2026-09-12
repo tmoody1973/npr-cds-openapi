@@ -53,7 +53,7 @@ Verified 2026-09-12 against CDS production. The pagination caps, sort grammar, d
 
 ## MCP server: ask CDS questions in plain words
 
-`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.5.0). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
+`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.6.0). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
 
 ### For radio professionals
 
@@ -87,6 +87,7 @@ With a station set, anything from another station comes back marked *display-onl
 | "What's WXPN's station id?" | s715, WXPN, Philadelphia. |
 | "Newest This Bites episodes" | Radio Milwaukee's food podcast, three newest episodes with lengths and links. Your station's podcasts are in CDS too: 13 channels, about 1,975 episodes. |
 | "NPR podcasts about AI" | Episodes from Up First, Consider This and the rest, each marked *premium audio: play or link, never store*. |
+| "Read me the Danielle Ponder story" | The three paragraphs, clean, plus the audio link. For an NPR radio segment with no written body you get the transcript; for a segment with neither, a plain note and the web link. Roughly half of NPR's stories carry body text in CDS. |
 | "Get me the latest NPR newscast" | NPR News 4PM EDT, 5 minutes, published 16:10, with the stream link and a note: premium audio, play or link, never store. |
 | "/morning-prep" (a saved prompt) | The assistant runs what's-new, NPR's stories, and the newscast itself, then writes a rundown a host can read out loud, with three talk breaks. |
 | "/newsletter-draft housing" | Our housing stories then NPR's, one or two sentences each, every item linking back, audio links included. |
@@ -99,11 +100,12 @@ With a station set, anything from another station comes back marked *display-onl
 - *A host between segments.* "Latest NPR newscast?" gives the cut, its length, and the link to play it. It is premium audio: play it, don't keep it.
 - *A developer wiring a site to CDS.* `station_labels` gives the exact label names and ids to filter on, and `whats_new_since` is the call an incremental sync loop makes.
 
-**The seven tools**, for when you want to name one directly:
+**The eight tools**, for when you want to name one directly:
 
 | Tool | Give it | Get back |
 |---|---|---|
 | `find_stories` | words, a station, a show or podcast, a topic, a date window, any mix; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio length and stream link, collection names, and a rights note when the audio is premium or belongs to another station |
+| `read_story` | a story url or CDS id | the story's paragraphs in reading order, or its transcript, or a plain note that CDS holds only the teaser and audio |
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
 | `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, each marked new or updated |
@@ -144,6 +146,10 @@ Two saved prompts, `morning-prep` and `newsletter-draft`, chain these tools into
 13. "Newest This Bites episodes." → Three episodes with lengths and links. Say "podcast" or the assistant will pass `kind: podcasts` on its own.
 14. "NPR podcasts about AI." → Episodes from Consider This, 1A, Throughline and the rest, each marked premium: play or link, never store.
 
+*Reading*
+
+17. "Read me the Danielle Ponder story." → Its paragraphs in order, no html, with the audio link. Then try an NPR radio segment: you get the transcript, or an honest note that CDS has only the teaser and audio for that one, with the web link.
+
 *When it should say no*
 
 15. "Download the newscast MP3 for me." → It gives you the link and explains it can't download or store premium audio. That's the terms working, not a bug.
@@ -153,7 +159,7 @@ If any of these misbehave, open an issue with the prompt and the answer. The `se
 
 **How it works, in order.** You ask for "Ladies First". The server looks the name up in a catalog it keeps (a lookup table, a list of names and ids it has seen before). If the name is missing, it reads your station's newest stories, notes which collections they point to, resolves the ones CDS will serve and infers the rest from the story urls, and remembers them for next time. It then asks CDS for that collection's stories, newest first. Before anything reaches the assistant it trims each 17 KB document down to the dozen fields a person needs, about 100 bytes. For a words question it also scans the newest 300 stories' titles and teasers itself and merges the two lists, so the assistant reads ten good hits instead of three hundred raw ones.
 
-**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`.
+**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`. 0.5.1: show names resolve by kind. 0.6.0: `read_story`, and the saved prompts compute real timestamps.
 
 **Podcasts.** Ask with `kind: podcasts`, or just say "podcast" and the assistant will. Episodes come back like stories, with the show name resolved from the podcast channel. NPR's podcast episodes all carry the premium flag, so each one says play or link, never store; a station's own podcasts usually don't. Newscasts are excluded from podcast searches and have their own tool.
 
