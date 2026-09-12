@@ -126,3 +126,34 @@ test('station_labels ignores collection links whose id is literally "null"', asy
   const r = await stationLabels({ station: 'Radio Milwaukee' }, deps([full({ collections: [{ href: '/v1/documents/null', rels: ['topic'] }, { href: '/v1/documents/g-s921-4166', rels: ['topic'] }] })]));
   assert.deepEqual(r.topics.map((t) => t.id), ['g-s921-4166']);
 });
+
+test('whats_new_since reads a bare date the way CDS does, as US Eastern midnight', async () => {
+  // Published 2026-09-11 at 11pm Eastern: before a since of 2026-09-12, so "updated", not "new".
+  const docs = [full({ id: 'late-night', publishDateTime: '2026-09-11T23:00:00-05:00', editorialLastModifiedDateTime: '2026-09-12T09:00:00-05:00' })];
+  const r = await whatsNewSince({ since: '2026-09-12' }, deps(docs));
+  assert.equal(r.hits[0].change, 'updated');
+});
+
+test('a home station that is not in the directory is a config error, not "not in CDS"', async () => {
+  const d = { ...deps(), homeStation: 's999999' };
+  await assert.rejects(() => checkStory({ url: 'https://radiomilwaukee.org/show/x/y' }, d), /NPR_CDS_HOME_STATION/);
+});
+
+test('check_story matches a station url regardless of www', async () => {
+  const r = await checkStory({ url: 'https://www.radiomilwaukee.org/show/ladies-first/2026-09-04/blessing-jolie/' }, deps());
+  assert.equal(r.found, true);
+});
+
+test('check_story counts a program as the show', async () => {
+  const doc = full({ collections: [{ href: '/v1/documents/2', rels: ['program'] }] });
+  const d = deps([doc]);
+  d.catalog.learnFromDocs = async () => new Map([['2', { id: '2', title: 'All Things Considered', type: 'program' }]]);
+  const r = await checkStory({ id: 'g-s921-15973' }, d);
+  assert.equal(r.show, 'All Things Considered'); assert.ok(!r.problems.some((p) => /No Show/.test(p)));
+});
+
+test('check_story only treats real npr.org hosts as npr.org urls', async () => {
+  const d = deps();
+  await checkStory({ url: 'https://evilnpr.org/2026/09/12/nx-s1-1/slug' }, d).catch(() => {});
+  assert.equal(d.queries[0]?.get('ids'), null, 'must not extract an id from a look-alike host');
+});

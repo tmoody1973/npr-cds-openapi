@@ -12,8 +12,8 @@ async function resolveStation(deps: FindDeps, station?: string): Promise<Station
   const wanted = station ?? deps.homeStation;
   if (!wanted) return undefined;
   const [s] = await deps.catalog.findStation(wanted);
-  if (station && !s) throw new Error(`No station matches "${station}".`);
-  return s ?? { id: wanted, name: wanted };
+  if (!s) throw new Error(station ? `No station matches "${station}".` : `NPR_CDS_HOME_STATION is "${wanted}" but no station in NPR's directory matches it. Check the id with find_station.`);
+  return s;
 }
 
 const newestFrom = (station: Station) =>
@@ -21,9 +21,9 @@ const newestFrom = (station: Station) =>
 
 const idFromLink = (href: string) => href.replace(/^.*\//, '');
 // Brightspot sometimes emits a collection link to "/v1/documents/null"; it is not a collection.
-const isRealLink = (l: any) => l?.href && idFromLink(l.href) !== 'null' && (l.rels ?? [])[0] !== 'byline';
+const isRealLink = (l: any) => l?.href && idFromLink(l.href) !== 'null' && !(l.rels ?? []).includes('byline');
 const sameUrl = (a: string, b: string) => {
-  const norm = (u: string) => { try { const x = new URL(u); return `${x.host}${x.pathname.replace(/\/$/, '')}`; } catch { return u; } };
+  const norm = (u: string) => { try { const x = new URL(u); return `${x.host.toLowerCase().replace(/^www\./, '')}${x.pathname.replace(/\/$/, '')}`; } catch { return u; } };
   return norm(a) === norm(b);
 };
 
@@ -37,7 +37,7 @@ export type StoryCheck = {
 
 export async function checkStory(args: { id?: string; url?: string; station?: string }, deps: FindDeps): Promise<StoryCheck> {
   let id = args.id;
-  if (!id && args.url) id = args.url.match(/npr\.org\/\d{4}\/\d{2}\/\d{2}\/([^/?#]+)/)?.[1];
+  if (!id && args.url) id = args.url.match(/^https?:\/\/(?:www\.)?npr\.org\/\d{4}\/\d{2}\/\d{2}\/([^/?#]+)/)?.[1];
   if (!id && !args.url) throw new Error('Give me a CDS id or a story url.');
 
   let doc: any; let searched: string;
@@ -59,7 +59,7 @@ export async function checkStory(args: { id?: string; url?: string; station?: st
   const name = (l: any) => names.get(idFromLink(l.href))?.title ?? idFromLink(l.href);
   const ofRel = (rel: string) => (doc.collections ?? []).filter((l: any) => isRealLink(l) && (l.rels ?? [])[0] === rel).map(name);
   const hit = toHit(doc);
-  const show = ofRel('series')[0];
+  const show = ofRel('series')[0] ?? ofRel('program')[0];
   const primaryImage = (doc.images ?? []).length > 0;
   const teaser = Boolean(doc.teaser);
   const problems: string[] = [];
@@ -107,7 +107,8 @@ export async function whatsNewSince(args: { since: string; station?: string; lim
     .sort((a: any, b: any) => Date.parse(b.editorialLastModifiedDateTime) - Date.parse(a.editorialLastModifiedDateTime))
     .slice(0, args.limit ?? 20);
   const names = await deps.catalog.learnFromDocs(docs);
-  const sinceMs = Date.parse(args.since);
+  // CDS reads a bare date as US Eastern (-05:00); classify new vs updated on the same boundary.
+  const sinceMs = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(args.since) ? `${args.since}T00:00:00-05:00` : args.since);
   const hits = docs.map((d: any) => {
     const h = toHit(d);
     for (const c of h.collections) { const n = names.get(c.id); if (n) c.name = n.title; }
