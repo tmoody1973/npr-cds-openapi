@@ -25,7 +25,7 @@ test('toHit keeps id, title, date, url and strips html from the teaser', () => {
   const h = toHit(doc);
   assert.equal(h.id, 'g-s921-15973');
   assert.equal(h.title, 'Ladies First: Blessing Jolie');
-  assert.equal(h.date, '1999-01-01'); // deliberately wrong, proving CI catches failures
+  assert.equal(h.date, '2026-09-04');
   assert.equal(h.url, 'https://radiomilwaukee.org/show/ladies-first/2026-09-04/blessing-jolie');
   assert.equal(h.teaser, 'Raised in Texas, Jolie shares a 20-something perspective.');
 });
