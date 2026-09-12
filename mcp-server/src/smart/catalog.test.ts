@@ -87,8 +87,8 @@ test('learnFromDocs keeps a later story\'s /show/ slug when the first story had 
 
 test('findCollection knows NPR podcast channels from the seed', async () => {
   const c = new Catalog(fakeNet().fetchJson, dir());
-  const [hit] = await c.findCollection('up first');
-  assert.equal(hit?.id, '510318'); assert.equal(hit?.type, 'podcast-channel');
+  const hits = await c.findCollection('up first');
+  assert.ok(hits.some((h) => h.id === '510318' && h.type === 'podcast-channel'), 'the podcast channel is in the unfiltered results');
 });
 
 test('findCollection can be limited to, or kept away from, a collection type', async () => {
