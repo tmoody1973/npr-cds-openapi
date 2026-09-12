@@ -18,6 +18,7 @@ function fakeNet() {
     if (u.searchParams.get('ids')) return { resources: u.searchParams.get('ids')!.split(',').filter((id) => !id.startsWith('g-s921-')).map((id) => topic(id, `Title ${id}`)) };
     if (u.searchParams.get('profileIds') === 'topic') return { resources: [topic('1019', 'Technology'), topic('133775819', 'Artificial Intelligence')] };
     if (u.searchParams.get('profileIds') === 'program') return { resources: [{ id: '2', title: 'All Things Considered', profiles: [{ href: '/v1/profiles/program', rels: ['type'] }] }] };
+    if (u.searchParams.get('profileIds') === 'podcast-channel') return { resources: [{ id: '510318', title: 'Up First', profiles: [{ href: '/v1/profiles/podcast-channel', rels: ['type'] }] }] };
     return { resources: [] };
   };
   return { fetchJson, calls };
@@ -82,4 +83,10 @@ test('learnFromDocs keeps a later story\'s /show/ slug when the first story had 
     { id: 'b', webPages: [{ href: 'https://radiomilwaukee.org/show/ladies-first/2026-09-11/x', rels: ['canonical'] }], collections: series },
   ]);
   assert.equal((await c.findCollection('ladies first'))[0]?.id, 'g-s921-13049');
+});
+
+test('findCollection knows NPR podcast channels from the seed', async () => {
+  const c = new Catalog(fakeNet().fetchJson, dir());
+  const [hit] = await c.findCollection('up first');
+  assert.equal(hit?.id, '510318'); assert.equal(hit?.type, 'podcast-channel');
 });

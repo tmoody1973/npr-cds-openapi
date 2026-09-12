@@ -131,7 +131,7 @@ export class Catalog {
   private async seed(): Promise<CollectionState> {
     const state = this.collections();
     if (state.seededAt) return state;
-    for (const profile of ['topic', 'program']) {
+    for (const profile of ['topic', 'program', 'podcast-channel']) {
       const { resources = [] } = await this.fetchJson(`${CDS}/v1/documents?ownerHrefs=${NPR}&profileIds=${profile}&limit=300`, { auth: true });
       this.remember(state, resources);
     }

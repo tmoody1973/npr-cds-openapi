@@ -9,8 +9,11 @@ export type Hit = {
   teaser?: string;
   url?: string; // canonical web page
   audio?: { seconds: number; href: string };
+  premium?: true; // carries has-premium-audio: play or link, never store
   collections: Array<{ id: string; rel: string; name?: string }>;
 };
+
+export const PREMIUM_NOTE = 'premium audio: play or link to it, never store or download it';
 
 type Link = { href?: string; rels?: string[] };
 type Doc = Record<string, any>;
@@ -21,7 +24,7 @@ const decodeEntities = (s: string) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,
   e[0] === '#' ? String.fromCodePoint(parseInt(e[1].toLowerCase() === 'x' ? e.slice(2) : e.slice(1), e[1].toLowerCase() === 'x' ? 16 : 10)) : ENTITIES[e.toLowerCase()] ?? m);
 const stripHtml = (s: string) => decodeEntities(s.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
 // NPR stories carry 8-12 collections; a person needs the show, the program, then a few topics.
-const REL_ORDER = ['series', 'program', 'topic', 'category', 'tag'];
+const REL_ORDER = ['series', 'podcast-channel', 'program', 'topic', 'category', 'tag'];
 const MAX_COLLECTIONS = 5;
 const relRank = (rel: string) => { const i = REL_ORDER.indexOf(rel); return i === -1 ? REL_ORDER.length : i; };
 const lastSegment = (href: string) => href.replace(/^.*\//, '');
@@ -44,6 +47,8 @@ export function toHit(doc: Doc): Hit {
   const canonical = (doc.webPages as Link[] | undefined)?.find((w) => (w.rels ?? []).includes('canonical'))?.href
     ?? doc.webPages?.[0]?.href;
 
+  const premium = (doc.profiles ?? []).some((p: Link) => p.href?.endsWith('/has-premium-audio'));
+
   return {
     id: doc.id,
     title: doc.title,
@@ -52,6 +57,7 @@ export function toHit(doc: Doc): Hit {
     ...(doc.teaser ? { teaser: stripHtml(doc.teaser) } : {}),
     ...(canonical ? { url: canonical } : {}),
     ...(audioHref ? { audio: { seconds: Number(audioAsset.duration ?? 0), href: audioHref } } : {}),
+    ...(premium ? { premium: true as const } : {}),
     collections,
   };
 }

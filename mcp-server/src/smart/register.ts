@@ -22,7 +22,7 @@ export function registerSmartTools(server: McpServer) {
 
   server.registerTool(
     'find_stories',
-    { description: 'FIND CONTENT WITH THIS FIRST. Search CDS stories by free text, station name, show or collection name, and date window. Names are resolved for you (no ids needed). Returns compact hits newest first: id, title, teaser, date, url, audio, collection names. Free text is matched against title and teaser of the newest stories server-side and widened with matching collections. Use getDocument with a hit id when you need the full document.',
+    { description: 'FIND CONTENT WITH THIS FIRST. Search CDS stories, or podcast episodes with kind="podcasts", by free text, station name, show or podcast name, collection name, and date window. Names are resolved for you (no ids needed). Returns compact hits newest first: id, title, teaser, date, url, audio, collection names. Free text is matched against title and teaser of the newest stories server-side and widened with matching collections. Use getDocument with a hit id when you need the full document.',
       inputSchema: {
       query: z.string().optional().describe('Free text, e.g. "AI", "Anthropic". Every word must appear in title or teaser.'),
       station: z.string().optional().describe('Station name, call letters, or city, e.g. "KCRW", "Radio Milwaukee", "Philadelphia".'),
@@ -32,6 +32,7 @@ export function registerSmartTools(server: McpServer) {
       until: z.string().optional().describe('YYYY-MM-DD'),
       limit: z.number().int().min(1).max(100).optional().describe('Hits to return. Default 10.'),
       scanPages: z.number().int().min(1).max(6).optional().describe('How many pages of 300 to scan for free text. Default 1.'),
+      kind: z.enum(['stories', 'podcasts']).optional().describe('"podcasts" searches podcast episodes (newscasts excluded) and resolves show to a podcast. Default stories.'),
       },
       annotations: { readOnlyHint: true },
     },
@@ -69,7 +70,7 @@ export function registerSmartTools(server: McpServer) {
   server.registerTool(
     'station_labels',
     {
-      description: 'What shows, programs, topics, tags and categories a station actually uses, with counts, learned from its newest 300 stories. Use it to find the exact label names before filtering.',
+      description: 'What shows, podcasts, programs, topics, tags and categories a station actually uses, with counts, learned from its newest 300 stories and 300 podcast episodes. Use it to find the exact label names before filtering.',
       inputSchema: { station: z.string().optional().describe('Station name, call letters or city. Defaults to the home station.') },
       annotations: { readOnlyHint: true },
     },

@@ -1,4 +1,4 @@
-import { toHit, type Hit } from './compact';
+import { PREMIUM_NOTE, toHit, type Hit } from './compact';
 import { matches, matchesText } from './match';
 import type { Collection, Station } from './catalog';
 import { NPR_SERVICE_ID } from './cds';
@@ -6,6 +6,7 @@ import { NPR_SERVICE_ID } from './cds';
 export type FindArgs = {
   query?: string; station?: string; show?: string; collection?: string;
   since?: string; until?: string; limit?: number; scanPages?: number;
+  kind?: 'stories' | 'podcasts';
 };
 export type FindDeps = {
   cdsQuery: (params: URLSearchParams) => Promise<{ resources: any[] }>;
@@ -29,7 +30,10 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   const scanPages = Math.min(args.scanPages ?? 1, 6);
   const searched: string[] = [];
 
-  const base = new URLSearchParams({ profileIds: 'story', sort: 'publishDateTime:desc', limit: String(PAGE) });
+  const podcasts = args.kind === 'podcasts';
+  const base = new URLSearchParams({ profileIds: podcasts ? 'podcast-episode' : 'story', sort: 'publishDateTime:desc', limit: String(PAGE) });
+  if (podcasts) base.set('excludedProfileIds', 'newscast');
+  const noun = podcasts ? 'podcast episodes' : 'stories';
   if (since || until) { base.set('publishDateTime', `${since ?? ''}...${until ?? ''}`); searched.push(`published ${since ?? 'any'} to ${until ?? 'now'}`); }
   if (station) {
     const [s] = await deps.catalog.findStation(station);
@@ -70,7 +74,7 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
       found.push(...resources.filter((d) => matches(toHit(d), query)));
       if (resources.length < PAGE) break;
     }
-    searched.push(`keyword "${query}" over ${scanned} newest ${station ? '' : 'NPR '}stories`);
+    searched.push(`keyword "${query}" over ${scanned} newest ${station ? '' : 'NPR '}${noun}`);
     return found;
   };
   const fetchByCollection = async (): Promise<any[]> => {
@@ -80,7 +84,7 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   };
   const [keyword, byCollection] = await Promise.all([scanKeyword(), fetchByCollection()]);
   const plain = !query && !collections.length ? (await deps.cdsQuery(base)).resources ?? [] : [];
-  if (plain.length) searched.push('newest stories');
+  if (plain.length) searched.push(`newest ${noun}`);
 
   const seen = new Map<string, any>();
   for (const d of [...keyword, ...byCollection, ...plain]) if (!seen.has(d.id)) seen.set(d.id, d);
@@ -90,7 +94,8 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   const names = await deps.catalog.learnFromDocs(docs);
   for (const h of hits) {
     for (const c of h.collections) { const n = names.get(c.id); if (n) c.name = n.title; }
-    if (deps.homeStation && h.owner !== deps.homeStation) h.rights = DISPLAY_ONLY;
+    const notes = [h.premium ? PREMIUM_NOTE : '', deps.homeStation && h.owner !== deps.homeStation ? DISPLAY_ONLY : ''].filter(Boolean);
+    if (notes.length) h.rights = notes.join('; ');
   }
   return { searched: searched.join('; '), hits };
 }

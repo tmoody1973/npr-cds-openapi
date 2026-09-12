@@ -53,7 +53,7 @@ Verified 2026-09-12 against CDS production. The pagination caps, sort grammar, d
 
 ## MCP server: ask CDS questions in plain words
 
-`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.3.0). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
+`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.5.0). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
 
 ### For radio professionals
 
@@ -85,6 +85,8 @@ With a station set, anything from another station comes back marked *display-onl
 | "What labels does Radio Milwaukee actually use?" | Shows: La Alternativa (20), What's All This (18), Ladies First (14), In the Mix (13), DJ Takeover (10). Topics: New Music (82), Studio Milwaukee Sessions (15). Categories: Family Fun (40), On Vinyl (23), Milwaukee Music Premiere (20), Summerfest (17), HYFIN (14). From the newest 300 stories. |
 | "What changed since yesterday?" | *new* In the Mix: BG Good; *new* Ladies First: Danielle Ponder; *updated* Ladies First: Blessing Jolie, Alemeda, The Womack Sisters. Newest change first. |
 | "What's WXPN's station id?" | s715, WXPN, Philadelphia. |
+| "Newest This Bites episodes" | Radio Milwaukee's food podcast, three newest episodes with lengths and links. Your station's podcasts are in CDS too: 13 channels, about 1,975 episodes. |
+| "NPR podcasts about AI" | Episodes from Up First, Consider This and the rest, each marked *premium audio: play or link, never store*. |
 | "Get me the latest NPR newscast" | NPR News 4PM EDT, 5 minutes, published 16:10, with the stream link and a note: premium audio, play or link, never store. |
 | "/morning-prep" (a saved prompt) | The assistant runs what's-new, NPR's stories, and the newscast itself, then writes a rundown a host can read out loud, with three talk breaks. |
 | "/newsletter-draft housing" | Our housing stories then NPR's, one or two sentences each, every item linking back, audio links included. |
@@ -97,13 +99,13 @@ With a station set, anything from another station comes back marked *display-onl
 - *A host between segments.* "Latest NPR newscast?" gives the cut, its length, and the link to play it. It is premium audio: play it, don't keep it.
 - *A developer wiring a site to CDS.* `station_labels` gives the exact label names and ids to filter on, and `whats_new_since` is the call an incremental sync loop makes.
 
-**The six tools**, for when you want to name one directly:
+**The seven tools**, for when you want to name one directly:
 
 | Tool | Give it | Get back |
 |---|---|---|
-| `find_stories` | words, a station, a show, a topic, a date window, any mix | compact hits newest first: title, teaser, date, link, audio length and stream link, collection names |
+| `find_stories` | words, a station, a show or podcast, a topic, a date window, any mix; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio length and stream link, collection names, and a rights note when the audio is premium or belongs to another station |
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
-| `station_labels` | a station name | shows, programs, topics, tags, categories it uses, with counts |
+| `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, each marked new or updated |
 | `latest_newscast` | nothing, or `short`, or a station name | the newest newscast: time, length, stream link, and a never-store note when it is premium |
 | `find_station` | a name, call letters, or city | station id and name |
@@ -111,7 +113,49 @@ With a station set, anything from another station comes back marked *display-onl
 
 Two saved prompts, `morning-prep` and `newsletter-draft`, chain these tools into a workflow the assistant follows the same way every time; your MCP client lists them next to the tools. The generated tools (`queryDocuments`, `getDocument`, and the rest, one per CDS endpoint) are still there for the full document when you need it.
 
+**Try it: prompts to test the server.** Ten minutes, in order. Each line says what a correct answer looks like, so you know whether it worked, not just whether it answered. Swap in your own station and shows.
+
+*Setup check*
+
+1. "What's my home station?" → It names your station and id without asking you. If it asks, run `npx -y npr-cds-mcp station`.
+2. "What's WXPN's station id? And KEXP?" → s715 Philadelphia, s79 Seattle. Answered from NPR's directory, no token needed.
+
+*Host*
+
+3. "What are the three newest Ladies First episodes?" → Three titles with dates, teasers, links, and audio lengths, newest first, in one call. You never typed an id.
+4. "Get me the latest NPR newscast." → The most recent hourly cut, about 5 minutes, with the time it was cut and a play link, plus the note that it's premium audio: play or link, never store. Add "the short one" for the 3-minute cut.
+5. Run the saved prompt `morning-prep` (in Claude Code, type `/` and pick it; in Claude Desktop it's in the attach menu). → A rundown a host can read out loud: our new and updated stories, five from NPR with links, the newest newscast, and three 20-second talk breaks. Nothing invented; every item came from a tool result.
+
+*Newsroom*
+
+6. "Latest NPR stories about AI." → Eight or so, the newest first, including ones filed only under Technology. The answer says what it searched: which collections and how many stories it scanned.
+7. "What has NPR published on housing this week, and what has KCRW?" → Two lists. KCRW's items carry a display-only note; NPR's do too unless NPR is your home station.
+8. "What changed since 8am?" → Our stories published or edited since then, each marked *new* or *updated*, newest change first.
+9. "Find our coverage of Summerfest from 2023." → Uses a date window to reach past the newest 2,000 stories. If it comes back thin, say "scan more pages."
+
+*Digital*
+
+10. "Why isn't this story on the site?" and paste a story url from your site. → In CDS or not, its Show, topics and tags by name, whether audio and a primary image are attached, whether it has a teaser, and any problems in plain language. Try it on a story you know is missing something.
+11. "What labels does our station actually use?" → Shows, podcasts, topics, tags and categories with counts from the newest 300 stories and 300 podcast episodes. The spelling you see here is the spelling CDS has.
+12. Run `newsletter-draft` with the topic "music". → Our music stories first, then up to three from NPR, one or two sentences each, every item with a link back and audio where there is audio.
+
+*Podcasts*
+
+13. "Newest This Bites episodes." → Three episodes with lengths and links. Say "podcast" or the assistant will pass `kind: podcasts` on its own.
+14. "NPR podcasts about AI." → Episodes from Consider This, 1A, Throughline and the rest, each marked premium: play or link, never store.
+
+*When it should say no*
+
+15. "Download the newscast MP3 for me." → It gives you the link and explains it can't download or store premium audio. That's the terms working, not a bug.
+16. "Newest stories from Radio Nowhere." → "No station matches" with a suggestion to try call letters, not a guess.
+
+If any of these misbehave, open an issue with the prompt and the answer. The `searched:` line in every result is the first thing to paste.
+
 **How it works, in order.** You ask for "Ladies First". The server looks the name up in a catalog it keeps (a lookup table, a list of names and ids it has seen before). If the name is missing, it reads your station's newest stories, notes which collections they point to, resolves the ones CDS will serve and infers the rest from the story urls, and remembers them for next time. It then asks CDS for that collection's stories, newest first. Before anything reaches the assistant it trims each 17 KB document down to the dozen fields a person needs, about 100 bytes. For a words question it also scans the newest 300 stories' titles and teasers itself and merges the two lists, so the assistant reads ten good hits instead of three hundred raw ones.
+
+**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`.
+
+**Podcasts.** Ask with `kind: podcasts`, or just say "podcast" and the assistant will. Episodes come back like stories, with the show name resolved from the podcast channel. NPR's podcast episodes all carry the premium flag, so each one says play or link, never store; a station's own podcasts usually don't. Newscasts are excluded from podcast searches and have their own tool.
 
 **What it can't do.** CDS has no text search, so word matching covers titles and teasers of the newest 300 to 1,800 stories per question, scoped to NPR unless you name a station. The catalog learns as it goes; the first question about a new tag can miss what the second finds. Content from other stations may be displayed with attribution and refreshed, not stored, and audio is always a link to NPR's or the station's servers, never a download.
 
