@@ -140,12 +140,16 @@ export class Catalog {
     return state;
   }
 
-  async findCollection(query: string): Promise<Collection[]> {
+  // types / notTypes narrow by collection kind: a flagship show is often both a broadcast series and a
+  // podcast channel with the same name, and the caller knows which one it wants.
+  async findCollection(query: string, opts: { types?: string[]; notTypes?: string[] } = {}): Promise<Collection[]> {
     const { items } = await this.seed();
     if (!this.collectionIndex) {
       this.collectionIndex = new MiniSearch<Collection>({ fields: ['title'], storeFields: ['id', 'title', 'type'], searchOptions: search });
       this.collectionIndex.addAll(Object.values(items));
     }
-    return this.collectionIndex.search(query).slice(0, 5).map((r) => ({ id: r.id, title: r.title, type: r.type }));
+    return this.collectionIndex.search(query)
+      .filter((r) => (!opts.types || opts.types.includes(r.type)) && !(opts.notTypes ?? []).includes(r.type))
+      .slice(0, 5).map((r) => ({ id: r.id, title: r.title, type: r.type }));
   }
 }

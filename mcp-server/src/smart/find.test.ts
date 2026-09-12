@@ -127,3 +127,12 @@ test('an unknown podcast is learned from the station\'s newest podcast episodes'
   assert.equal(d.queries[0].get('profileIds'), 'podcast-episode', 'the learning scan is a podcast scan');
   assert.equal(d.queries[0].get('ownerHrefs'), 'https://organization.api.npr.org/v4/services/s921');
 });
+
+test('show lookup asks for a podcast channel when kind=podcasts and avoids one otherwise', async () => {
+  const d = deps(); const asked: any[] = [];
+  d.catalog.findCollection = async (q, opts) => { asked.push(opts); return [{ id: 'g-s921-13049', title: q, type: 'series' }]; };
+  await findStories({ show: 'Up First', kind: 'podcasts' }, d);
+  await findStories({ show: 'Up First' }, d);
+  assert.deepEqual(asked[0], { types: ['podcast-channel'] });
+  assert.deepEqual(asked[1], { notTypes: ['podcast-channel'] });
+});
