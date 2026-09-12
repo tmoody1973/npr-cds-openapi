@@ -35,6 +35,17 @@ Any MCP client, as JSON:
 - "/morning-prep" and "/newsletter-draft housing" (saved prompts)
 - "What's WXPN's station id?"
 
+## Try it
+
+1. "What's my home station?" → your station, no id typed.
+2. "Three newest Ladies First episodes" → titles, dates, lengths, links, one call.
+3. "Latest NPR newscast" → the hourly cut with a play link and a never-store note.
+4. "Why isn't this story on the site?" + a url → labels, audio, image, teaser, problems in plain words.
+5. "What labels does our station use?" → shows, podcasts, topics, tags with counts.
+6. "What changed since 8am?" → new and updated, newest change first.
+7. "NPR podcasts about AI" → episodes marked premium: play or link, never store.
+8. Run the `morning-prep` prompt → a read-out-loud rundown with talk breaks.
+
 ## Tools
 
 | Tool | Give it | Get back |
