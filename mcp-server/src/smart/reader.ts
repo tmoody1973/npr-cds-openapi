@@ -44,9 +44,15 @@ export async function readStory(args: { id?: string; url?: string; station?: str
   const max = args.maxChars ?? DEFAULT_MAX_CHARS;
   let note: string | undefined;
   if (source === 'none') note = `CDS holds only the teaser and audio for this story, no text and no transcript yet. The web page may have more: ${hit.url ?? 'no url'}.`;
-  const kept: string[] = []; let size = 0;
-  for (const p of paragraphs) { if (size + p.length > max) break; kept.push(p); size += p.length + 1; }
-  if (kept.length < paragraphs.length) note = `Truncated to ${countWords(kept)} of ${words} words (maxChars ${max}). Raise maxChars for the rest.`;
+  const kept: string[] = []; let size = 0; let cut = false;
+  for (const p of paragraphs) {
+    if (size + p.length > max) {
+      if (!kept.length) kept.push(p.slice(0, max)); // never return nothing for a story that has text
+      cut = true; break;
+    }
+    kept.push(p); size += p.length + 1;
+  }
+  if (cut) note = `Truncated to ${countWords(kept)} of ${words} words (maxChars ${max}). Raise maxChars for the rest.`;
 
   return {
     id: doc.id, title: doc.title, date: hit.date, url: hit.url, audio: hit.audio, rights: rightsFor(hit, deps.homeStation),

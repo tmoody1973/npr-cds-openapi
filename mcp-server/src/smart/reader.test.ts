@@ -70,3 +70,9 @@ test('read_story splits a plain-text transcript on single line breaks', async ()
   const r = await readStory({ id: 'nx-s1-3' }, deps([seg], { 'nx-s1-3-transcript': tr }));
   assert.deepEqual(r.paragraphs, ['HOST: First line.', 'GUEST: Second line.', 'HOST: Third.']);
 });
+
+test('read_story keeps a cut of the first paragraph when it alone exceeds maxChars', async () => {
+  const long = story({ layout: [{ href: '#/assets/p1' }], assets: Object.fromEntries([text('p1', 'word '.repeat(400))]) });
+  const r = await readStory({ id: 'g-s921-16132', maxChars: 500 }, deps([long]));
+  assert.equal(r.paragraphs.length, 1); assert.ok(r.paragraphs[0].length <= 500); assert.match(r.note!, /truncated/i);
+});
