@@ -44,16 +44,20 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   const collections: Collection[] = [];
   // A show name means a podcast channel when kind=podcasts, and never one otherwise.
   const showTypes = podcasts ? { types: ['podcast-channel'] } : { notTypes: ['podcast-channel'] };
+  // An explicit name must have all its words in the title; fuzzy alone would let "Up First" mean "first responders".
+  const lookup = async (name: string, opts: object) => (await deps.catalog.findCollection(name, opts)).find((c) => matchesText(c.title, name));
   for (const name of [show, collection].filter(Boolean) as string[]) {
     const opts = name === show ? showTypes : {};
-    let [c] = await deps.catalog.findCollection(name, opts);
+    let c = await lookup(name, opts);
     if (!c) {
-      // Station shows are not fetchable documents; learn them from the station's newest stories.
-      const owner = base.get('ownerHrefs') ?? (deps.homeStation ? ORG + deps.homeStation : undefined);
-      if (owner) {
+      // Station shows are not fetchable documents; learn them from the newest content of the named or
+      // home station, then NPR's, and look again.
+      const owners = [...new Set([base.get('ownerHrefs') ?? (deps.homeStation ? ORG + deps.homeStation : ''), ORG + NPR_SERVICE_ID].filter(Boolean))];
+      for (const owner of owners) {
         const p = new URLSearchParams(base); p.set('ownerHrefs', owner);
         await deps.catalog.learnFromDocs((await deps.cdsQuery(p)).resources ?? []);
-        [c] = await deps.catalog.findCollection(name, opts);
+        c = await lookup(name, opts);
+        if (c) break;
       }
     }
     if (!c) throw new Error(`No show or collection matches "${name}". Try find_collection, or give a station so I can learn its shows.`);

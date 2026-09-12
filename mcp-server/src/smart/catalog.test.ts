@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Catalog, type FetchJson } from './catalog';
@@ -95,4 +95,17 @@ test('findCollection can be limited to, or kept away from, a collection type', a
   const c = new Catalog(fakeNet().fetchJson, dir());
   assert.equal((await c.findCollection('up first', { types: ['podcast-channel'] }))[0]?.id, '510318', 'the podcast');
   assert.equal((await c.findCollection('up first', { notTypes: ['podcast-channel'] }))[0]?.id, '3', 'the broadcast program');
+});
+
+test('a catalog seeded by an older version re-seeds when the seed list changes', async () => {
+  const d = dir(); const net = fakeNet();
+  const first = new Catalog(net.fetchJson, d);
+  await first.findCollection('technology');
+  // pretend an older release wrote the cache without podcast channels and without a seed version
+  const file = path.join(d, 'collections.json');
+  const state = JSON.parse(readFileSync(file, 'utf8'));
+  delete state.seedVersion; delete state.items['510318'];
+  writeFileSync(file, JSON.stringify(state));
+  const again = new Catalog(net.fetchJson, d);
+  assert.ok((await again.findCollection('up first', { types: ['podcast-channel'] })).some((h) => h.id === '510318'), 're-seeded podcast channels');
 });
