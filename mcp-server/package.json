@@ -27,10 +27,12 @@
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "start": "node dist/main.js",
-    "dev": "tsx src/main.ts"
+    "dev": "tsx src/main.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
+    "minisearch": "^7.2.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
