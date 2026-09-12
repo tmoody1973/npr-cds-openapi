@@ -134,5 +134,6 @@ export async function latestNewscast(args: { length?: 'long' | 'short'; station?
     id: doc.id, title: doc.title, station: station!.name, published: doc.publishDateTime,
     seconds: hit.audio?.seconds, audio: hit.audio?.href, expires: doc.expirationDateTime,
     ...(premium ? { rights: PREMIUM_NOTE } : {}),
+    ...(hit.audio ? {} : { warning: 'This newscast has no audio asset in CDS; do not present it as playable.' }),
   };
 }

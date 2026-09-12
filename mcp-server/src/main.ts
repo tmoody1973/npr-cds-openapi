@@ -69,4 +69,5 @@ async function main() {
   await server.connect(transport);
 }
 
-main().catch(console.error);
+// Exit on any failure: a line reader left open on stdin would otherwise keep the process alive.
+main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });

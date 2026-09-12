@@ -12,6 +12,7 @@ export function readHomeStation(env: NodeJS.ProcessEnv = process.env, dir = CONF
 
 export function saveHomeStation(id: string, dir = CONFIG_DIR) {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
+  chmodSync(dir, 0o700); // older versions created it with default permissions
   const file = path.join(dir, 'config.json');
   let current: Record<string, unknown> = {};
   try { current = JSON.parse(readFileSync(file, 'utf8')); } catch { /* first save */ }

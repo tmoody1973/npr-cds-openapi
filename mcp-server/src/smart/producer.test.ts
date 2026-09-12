@@ -193,3 +193,8 @@ test('latest_newscast can pick the short cut, and a station', async () => {
 test('latest_newscast with nothing published says so plainly', async () => {
   await assert.rejects(() => latestNewscast({ station: 'KCRW' }, deps([])), /No newscast/);
 });
+
+test('latest_newscast flags a newscast with no audio asset instead of presenting it as ready', async () => {
+  const r = await latestNewscast({}, deps([newscast('nx-s1-20260912-1600-long', 280, { audio: [], assets: {} })]));
+  assert.equal(r.audio, undefined); assert.match(r.warning ?? '', /no audio/i);
+});
