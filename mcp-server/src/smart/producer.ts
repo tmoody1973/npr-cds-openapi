@@ -116,3 +116,24 @@ export async function whatsNewSince(args: { since: string; station?: string; lim
   });
   return { searched: `stories from ${station.name} edited or published since ${args.since}`, hits };
 }
+
+// ---- latest_newscast ----
+export const PREMIUM_NOTE = 'premium audio: play or link to it, never store or download it';
+
+export async function latestNewscast(args: { length?: 'long' | 'short'; station?: string }, deps: FindDeps) {
+  const station = args.station ? await resolveStation(deps, args.station) : { id: NPR_SERVICE_ID, name: 'NPR' };
+  const p = new URLSearchParams({ profileIds: 'newscast', ownerHrefs: ORG + station!.id, sort: 'publishDateTime:desc', limit: '10' });
+  const docs: any[] = (await deps.cdsQuery(p)).resources ?? [];
+  const wanted = args.length ?? 'long';
+  // NPR ids end in -long or -short; other stations publish one cut.
+  const doc = docs.find((d) => d.id.endsWith(`-${wanted}`)) ?? docs[0];
+  if (!doc) throw new Error(`No newscast from ${station!.name} in CDS.`);
+  const hit = toHit(doc);
+  const premium = (doc.profiles ?? []).some((pr: any) => pr.href?.endsWith('/has-premium-audio'));
+  return {
+    id: doc.id, title: doc.title, station: station!.name, published: doc.publishDateTime,
+    seconds: hit.audio?.seconds, audio: hit.audio?.href, expires: doc.expirationDateTime,
+    ...(premium ? { rights: PREMIUM_NOTE } : {}),
+    ...(hit.audio ? {} : { warning: 'This newscast has no audio asset in CDS; do not present it as playable.' }),
+  };
+}

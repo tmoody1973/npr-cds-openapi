@@ -59,20 +59,20 @@ Verified 2026-09-12 against CDS production. The pagination caps, sort grammar, d
 
 **What you get.** An assistant that knows what's in CDS, yours and every other station's, and can answer by name. You never look up an id. You never read raw JSON.
 
-**Setup, once, three lines.** You need a CDS token from NPR Member Partnership (one per person under NPR's terms) and Node.js 20 or newer.
+**Setup, once, two lines.** You need a CDS token from NPR Member Partnership (one per person under NPR's terms) and Node.js 20 or newer.
 
 ```bash
-npx -y npr-cds-mcp setup                                 # pastes your token into ~/.config/npr-cds/token, readable only by you
-claude mcp add npr-cds -s user -e NPR_CDS_HOME_STATION=s921 -- npx -y npr-cds-mcp   # Claude Code; use your own station's id
+npx -y npr-cds-mcp setup                              # asks for your token, then "which station are you?"
+claude mcp add npr-cds -s user -- npx -y npr-cds-mcp  # Claude Code
 ```
 
-Claude Desktop or any other MCP client takes the same thing as JSON:
+`setup` saves the token to `~/.config/npr-cds/token` and your station to `~/.config/npr-cds/config.json`, both readable only by you. Type your station's name, call letters, or city; it looks the id up in NPR's directory and shows you the matches. `npx -y npr-cds-mcp station` changes it later. Claude Desktop or any other MCP client takes the same server as JSON:
 
 ```json
-{ "mcpServers": { "npr-cds": { "command": "npx", "args": ["-y", "npr-cds-mcp"], "env": { "NPR_CDS_HOME_STATION": "s921" } } } }
+{ "mcpServers": { "npr-cds": { "command": "npx", "args": ["-y", "npr-cds-mcp"] } } }
 ```
 
-`NPR_CDS_HOME_STATION` is your station's service id (Radio Milwaukee is `s921`; ask the assistant "what is KCRW's station id" and it will tell you). With it set, anything from another station comes back marked *display-only*, which is what NPR's terms require.
+With a station set, anything from another station comes back marked *display-only*, which is what NPR's terms require. `NPR_CDS_TOKEN` and `NPR_CDS_HOME_STATION` in the environment override the saved files, for CI or shared machines.
 
 **What you can ask.** These are real questions and real answers from September 12, 2026.
 
@@ -85,12 +85,16 @@ Claude Desktop or any other MCP client takes the same thing as JSON:
 | "What labels does Radio Milwaukee actually use?" | Shows: La Alternativa (20), What's All This (18), Ladies First (14), In the Mix (13), DJ Takeover (10). Topics: New Music (82), Studio Milwaukee Sessions (15). Categories: Family Fun (40), On Vinyl (23), Milwaukee Music Premiere (20), Summerfest (17), HYFIN (14). From the newest 300 stories. |
 | "What changed since yesterday?" | *new* In the Mix: BG Good; *new* Ladies First: Danielle Ponder; *updated* Ladies First: Blessing Jolie, Alemeda, The Womack Sisters. Newest change first. |
 | "What's WXPN's station id?" | s715, WXPN, Philadelphia. |
+| "Get me the latest NPR newscast" | NPR News 4PM EDT, 5 minutes, published 16:10, with the stream link and a note: premium audio, play or link, never store. |
+| "/morning-prep" (a saved prompt) | The assistant runs what's-new, NPR's stories, and the newscast itself, then writes a rundown a host can read out loud, with three talk breaks. |
+| "/newsletter-draft housing" | Our housing stories then NPR's, one or two sentences each, every item linking back, audio links included. |
 
 **Real situations.**
 
 - *A digital editor gets a ticket: "my story isn't on the site."* Paste the url into `check_story`. Nine times out of ten the answer is a missing Show label or audio attached as a link instead of a file, and the tool says which.
 - *A news director planning a local angle.* "What has NPR published on housing this week?" then "and KCRW?" Same question, different station name.
-- *A producer's morning check.* "What changed since 8am?" shows what colleagues published or edited overnight.
+- *A producer's morning check.* "What changed since 8am?" shows what colleagues published or edited overnight. Or run the `morning-prep` prompt and get the whole rundown.
+- *A host between segments.* "Latest NPR newscast?" gives the cut, its length, and the link to play it. It is premium audio: play it, don't keep it.
 - *A developer wiring a site to CDS.* `station_labels` gives the exact label names and ids to filter on, and `whats_new_since` is the call an incremental sync loop makes.
 
 **The six tools**, for when you want to name one directly:
@@ -101,10 +105,11 @@ Claude Desktop or any other MCP client takes the same thing as JSON:
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
 | `station_labels` | a station name | shows, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, each marked new or updated |
+| `latest_newscast` | nothing, or `short`, or a station name | the newest newscast: time, length, stream link, and a never-store note when it is premium |
 | `find_station` | a name, call letters, or city | station id and name |
 | `find_collection` | a topic, tag, show, or program name | its id |
 
-The generated tools (`queryDocuments`, `getDocument`, and the rest, one per CDS endpoint) are still there for the full document when you need it.
+Two saved prompts, `morning-prep` and `newsletter-draft`, chain these tools into a workflow the assistant follows the same way every time; your MCP client lists them next to the tools. The generated tools (`queryDocuments`, `getDocument`, and the rest, one per CDS endpoint) are still there for the full document when you need it.
 
 **How it works, in order.** You ask for "Ladies First". The server looks the name up in a catalog it keeps (a lookup table, a list of names and ids it has seen before). If the name is missing, it reads your station's newest stories, notes which collections they point to, resolves the ones CDS will serve and infers the rest from the story urls, and remembers them for next time. It then asks CDS for that collection's stories, newest first. Before anything reaches the assistant it trims each 17 KB document down to the dozen fields a person needs, about 100 bytes. For a words question it also scans the newest 300 stories' titles and teasers itself and merges the two lists, so the assistant reads ten good hits instead of three hundred raw ones.
 
@@ -126,6 +131,8 @@ node scripts/bench-smart.mjs      # every smart tool through the real server, li
 **Regeneration.** Cortex overwrites `mcp-server/package.json`, `tsconfig.json` and `README.md`. `scripts/after-generate.mjs`, run by `pnpm mcp`, restores the MiniSearch dependency, the `test` script, the test-file exclusion, and copies `docs/PACKAGE_README.md` over the package README so npm shows the right thing. Hand edits to generated files must be mirrored in `cortex-templates/mcp/*.ejs`.
 
 **Cache.** Station names come from NPR's public services directory (686 entries, refreshed daily). Collection names live in `~/.cache/npr-cds/collections.json` (or `$XDG_CACHE_HOME/npr-cds/`), written atomically and merged before each write so two server processes do not overwrite each other.
+
+**Config.** `setup` writes the token and `config.json` (home station) under `~/.config/npr-cds/`. Environment variables win over both files.
 
 **Releasing a new version.** Bump `cdsMcpVersion` in `package.json`, run `pnpm mcp`, `(cd mcp-server && pnpm test)`, `pnpm test:mcp`, `node scripts/bench-smart.mjs`, then `cd mcp-server && npm publish --access public`.
 
