@@ -35,3 +35,31 @@ test('find_stories advertises every argument the function accepts, so none is si
   assert.deepEqual(tools.map((t) => t.name).sort(), ['check_story', 'coverage_gap', 'coverage_scan', 'find_collection', 'find_station', 'find_stories', 'latest_newscast', 'read_story', 'search_archive', 'station_labels', 'whats_new_since']);
   await client.close(); await server.close();
 });
+
+// find_station and find_collection resolve through Catalog to a plain array. MCP requires
+// structuredContent to be an object; a strict client (Claude Code 2.1.270) rejects an array with
+// "MCP error -32602: Invalid tools/call result: expected record, received array".
+test('find_station and find_collection results carry an object, not an array, as structuredContent', async () => {
+  process.env.NPR_CDS_TOKEN = 'test-token'; // so cdsQuery's auth check does not throw before the fake fetch runs
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string | URL) => {
+    const body = String(url).includes('organization.api.npr.org/v4/services') ? [{ id: 's715', name: 'WXPN' }] : { resources: [] };
+    return { ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) } as Response;
+  }) as typeof fetch;
+  try {
+    const { registerSmartTools } = await import('./register');
+    const server = new McpServer({ name: 't2', version: '0' });
+    registerSmartTools(server);
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const client = new Client({ name: 'c2', version: '0' }); await client.connect(b);
+    const station = await client.callTool({ name: 'find_station', arguments: { query: 'WXPN' } });
+    const collection = await client.callTool({ name: 'find_collection', arguments: { query: 'Technology' } });
+    for (const r of [station, collection] as any[]) {
+      assert.ok(r.structuredContent && typeof r.structuredContent === 'object' && !Array.isArray(r.structuredContent), `expected object structuredContent, got ${JSON.stringify(r.structuredContent)}`);
+    }
+    await client.close(); await server.close();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
