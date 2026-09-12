@@ -73,3 +73,13 @@ test('learnFromDocs infers a station show name from the story url when the serie
   assert.equal(hit?.id, 'g-s921-13049'); assert.equal(hit?.type, 'series');
   assert.ok(!net.calls.some((u) => u.includes('1192772937')), 'bylines are not resolved');
 });
+
+test('learnFromDocs keeps a later story\'s /show/ slug when the first story had none', async () => {
+  const c = new Catalog(fakeNet().fetchJson, dir());
+  const series = [{ href: '/v1/documents/g-s921-13049', rels: ['series'] }];
+  await c.learnFromDocs([
+    { id: 'a', webPages: [{ href: 'https://radiomilwaukee.org/2026/09/04/no-show-path', rels: ['canonical'] }], collections: series },
+    { id: 'b', webPages: [{ href: 'https://radiomilwaukee.org/show/ladies-first/2026-09-11/x', rels: ['canonical'] }], collections: series },
+  ]);
+  assert.equal((await c.findCollection('ladies first'))[0]?.id, 'g-s921-13049');
+});

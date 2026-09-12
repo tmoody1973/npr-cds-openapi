@@ -76,7 +76,15 @@ export class Catalog {
   private remember(state: CollectionState, docs: any[]) {
     for (const doc of docs) state.items[doc.id] = { id: doc.id, title: doc.title ?? doc.id, type: typeOf(doc) };
   }
-  private commit(state: CollectionState) { this.save('collections.json', state); this.collectionIndex = undefined; }
+  // Merge what another server process may have learned since we loaded, so neither overwrites the other.
+  // ponytail: last-writer-wins on the same id; a lock file would close the remaining race.
+  private commit(state: CollectionState) {
+    const disk = this.load<CollectionState>('collections.json', { items: {} });
+    state.items = { ...disk.items, ...state.items };
+    state.seededAt ??= disk.seededAt;
+    this.save('collections.json', state);
+    this.collectionIndex = undefined;
+  }
 
   async resolveCollections(ids: string[]): Promise<Map<string, Collection>> {
     const state = this.collections();
@@ -103,7 +111,8 @@ export class Catalog {
         const rel = (l.rels ?? [])[0] ?? 'collection';
         if (rel === 'byline' || !l.href) continue;
         const id = l.href.replace(/^.*\//, '');
-        if (!seen.has(id)) seen.set(id, { rel, slug });
+        const previous = seen.get(id);
+        if (!previous || (!previous.slug && slug)) seen.set(id, { rel, slug });
       }
     }
     const known = await this.resolveCollections([...seen.keys()]);

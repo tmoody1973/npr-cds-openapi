@@ -85,3 +85,13 @@ test('toHit prefers the audio entry marked primary over the first one listed', (
     assets: { ...doc.assets, promo: { duration: 30, enclosures: [{ href: 'https://x/promo.mp3', type: 'audio/mpeg' }] } } });
   assert.equal(h.audio?.href, 'https://dovetail.prxu.org/x.mp3');
 });
+
+test('toHit decodes html entities in the teaser', () => {
+  assert.equal(toHit({ ...doc, teaser: 'AT&amp;T &quot;deal&quot; &#8212; it&#39;s on' }).teaser, 'AT&T "deal" \u2014 it\u2019s on'.replace('\u2019', "'"));
+});
+
+test('matches handles accented words as whole words', () => {
+  const h = toHit({ ...doc, title: 'Éxito total', teaser: 'la reunión' });
+  assert.ok(matches(h, 'éxito')); assert.ok(matches(h, 'reunión'));
+  assert.ok(!matches(h, 'xito'), 'must not match inside an accented word');
+});
