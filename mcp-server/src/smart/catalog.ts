@@ -111,6 +111,7 @@ export class Catalog {
         const rel = (l.rels ?? [])[0] ?? 'collection';
         if (rel === 'byline' || !l.href) continue;
         const id = l.href.replace(/^.*\//, '');
+        if (!id || id === 'null') continue;
         const previous = seen.get(id);
         if (!previous || (!previous.slug && slug)) seen.set(id, { rel, slug });
       }

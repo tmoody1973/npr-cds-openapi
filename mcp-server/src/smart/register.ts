@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Catalog } from './catalog';
 import { cdsQuery, fetchJson } from './cds';
 import { findStories } from './find';
+import { checkStory, stationLabels, whatsNewSince } from './producer';
 
 const cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache'), 'npr-cds');
 const text = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data as any });
@@ -47,5 +48,43 @@ export function registerSmartTools(server: McpServer) {
     'Look up a CDS collection (topic, tag, series, program) by name. Returns ids for collectionIds. Knows NPR topics and programs, plus every collection seen in earlier results.',
     { query: z.string() },
     safe(({ query }) => catalog.findCollection(query)),
+  );
+
+  server.registerTool(
+    'check_story',
+    {
+      description: 'Why is my story not showing up? Give a story url (npr.org or a station site) or a CDS id. Reports whether it is in CDS, its Show, topics, tags and categories by name, whether audio is attached, whether it has a primary image and teaser, and lists problems in plain language.',
+      inputSchema: {
+        url: z.string().optional().describe('The story\'s public url.'),
+        id: z.string().optional().describe('CDS document id, e.g. g-s921-15973.'),
+        station: z.string().optional().describe('Station the url belongs to, if not the home station.'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => checkStory(args, deps)),
+  );
+
+  server.registerTool(
+    'station_labels',
+    {
+      description: 'What shows, programs, topics, tags and categories a station actually uses, with counts, learned from its newest 300 stories. Use it to find the exact label names before filtering.',
+      inputSchema: { station: z.string().optional().describe('Station name, call letters or city. Defaults to the home station.') },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => stationLabels(args, deps)),
+  );
+
+  server.registerTool(
+    'whats_new_since',
+    {
+      description: 'Stories published or edited since a time, newest change first, each marked new or updated. Defaults to the home station, then NPR. Use for a morning check or an incremental sync.',
+      inputSchema: {
+        since: z.string().describe('YYYY-MM-DD or an ISO timestamp, e.g. 2026-09-12T08:00:00Z'),
+        station: z.string().optional(),
+        limit: z.number().int().min(1).max(300).optional().describe('Default 20.'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => whatsNewSince(args, deps)),
   );
 }

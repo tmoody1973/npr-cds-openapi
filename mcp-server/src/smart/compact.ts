@@ -29,7 +29,7 @@ const lastSegment = (href: string) => href.replace(/^.*\//, '');
 export function toHit(doc: Doc): Hit {
   const links: Link[] = doc.collections ?? [];
   const collections = links
-    .filter((l) => l.href && !(l.rels ?? []).includes('byline'))
+    .filter((l) => l.href && !(l.rels ?? []).includes('byline') && lastSegment(l.href) !== 'null')
     .map((l) => ({ id: lastSegment(l.href!), rel: (l.rels ?? [])[0] ?? 'collection' }))
     .sort((a, b) => relRank(a.rel) - relRank(b.rel))
     .slice(0, MAX_COLLECTIONS);

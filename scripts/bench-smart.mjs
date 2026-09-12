@@ -28,4 +28,16 @@ async function bench(label, name, args) {
 await bench("Ladies First, 3 newest (was 1 call, ~20K chars)", "find_stories", { show: "Ladies First", limit: 3 });
 await bench("AI stories (was 5 calls, 227K chars)", "find_stories", { query: "AI", limit: 8 });
 await bench("KCRW newest", "find_stories", { station: "KCRW", limit: 3 });
+
+async function show(label, name, args, render) {
+  const t0 = Date.now(); const out = text(await client.callTool({ name, arguments: args }));
+  console.log(`\n== ${label} == 1 call, ${out.length} chars, ${Date.now() - t0} ms`); render(JSON.parse(out));
+  if (tokens.some((t) => out.includes(t))) throw new Error("token leaked");
+}
+await show("check_story by station url", "check_story", { url: "https://radiomilwaukee.org/show/ladies-first/2026-09-04/blessing-jolie-20nothing-album" },
+  (j) => console.log(`found=${j.found} show=${j.show} audio=${j.audio?.seconds ?? "none"}s image=${j.primaryImage} teaser=${j.teaser} problems=${JSON.stringify(j.problems)}`));
+await show("station_labels Radio Milwaukee", "station_labels", { station: "Radio Milwaukee" },
+  (j) => { console.log(`scanned ${j.scanned}`); for (const g of ["shows", "topics", "tags", "categories"]) console.log(`${g}: ${j[g].slice(0, 5).map((l) => `${l.name} (${l.count})`).join(", ")}`); });
+await show("whats_new_since yesterday, home station", "whats_new_since", { since: new Date(Date.now() - 36e5 * 24).toISOString().slice(0, 10), limit: 5 },
+  (j) => { console.log(`searched: ${j.searched}`); for (const h of j.hits) console.log(`${h.change.padEnd(7)} ${h.modified.slice(0, 16)}  ${h.title}`); });
 await client.close();
