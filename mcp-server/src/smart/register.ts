@@ -203,7 +203,7 @@ export function registerSmartTools(server: McpServer) {
       inputSchema: {
         since: z.string().optional().describe('YYYY-MM-DD. Default seven days ago.'),
         until: z.string().optional().describe('YYYY-MM-DD'),
-        depth: z.number().int().min(1).max(6).optional().describe('Pages of 300 newest stories to scan. Default 4.'),
+        depth: z.number().int().min(1).max(6).optional().describe('Pages of 300 newest stories to scan. Default 6.'),
         limit: z.number().int().min(1).max(200).optional().describe('Shows and topics to return, most active first. Default 60. Stations are never cut.'),
       },
       annotations: { readOnlyHint: true },

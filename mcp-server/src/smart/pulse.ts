@@ -4,6 +4,7 @@
 // rebuilds its Explore index from this once an hour.
 import type { FindDeps } from './find';
 import type { Station } from './catalog';
+import { NPR_SERVICE_ID } from './cds';
 
 const PAGE = 300;
 const SHOW_RELS = new Set(['series', 'program', 'podcast-channel']);
@@ -17,7 +18,7 @@ export type PulseStation = PulseRow & { state?: string; city?: string };
 export type PulseShow = PulseRow & { rel: 'series' | 'program' | 'podcast-channel'; owner: string };
 export type Pulse = {
   searched: string; since: string; until?: string;
-  scanned: { stories: number; episodes: number }; capped: boolean;
+  scanned: { stories: number; episodes: number }; capped: boolean; coveredFrom?: string;
   stations: PulseStation[]; shows: PulseShow[]; topics: PulseRow[];
 };
 
@@ -53,7 +54,7 @@ function tallyCollections(doc: any, date: string, owner: string, shows: Tally, t
 export async function networkPulse(args: PulseArgs, deps: FindDeps): Promise<Pulse> {
   const since = args.since ?? daysAgo(7);
   const until = args.until;
-  const depth = Math.min(Math.max(args.depth ?? 4, 1), 6);
+  const depth = Math.min(Math.max(args.depth ?? 6, 1), 6);
   const limit = args.limit ?? 60;
   // Podcast episodes are one page: they count toward shows, never toward a station's story count.
   const [stories, episodes] = await Promise.all([scan(deps, 'story', depth, since, until), scan(deps, 'podcast-episode', 1, since, until)]);
@@ -75,7 +76,7 @@ export async function networkPulse(args: PulseArgs, deps: FindDeps): Promise<Pul
   // City and state come from NPR's station finder, one lookup per station, cached by the catalog after the first pulse.
   const stationRows: PulseStation[] = [];
   for (const [id, t] of stations) {
-    const base: Station = directory.get(id) ?? { id, name: id };
+    const base: Station = id === NPR_SERVICE_ID ? { ...(directory.get(id) ?? { id, name: id }), name: 'NPR' } : (directory.get(id) ?? { id, name: id });
     let s = base;
     if (deps.catalog.enrichStation) { try { s = await deps.catalog.enrichStation(id); } catch { /* finder down: name only */ } }
     stationRows.push({ id, name: base.name, count: t.count, last: t.last, ...(s.state ? { state: s.state } : {}), ...(s.city ? { city: s.city } : {}) });
@@ -84,10 +85,14 @@ export async function networkPulse(args: PulseArgs, deps: FindDeps): Promise<Pul
   const topicRows: PulseRow[] = [...topics].map(([id, t]) => ({ id, name: names.get(id)?.title ?? id, count: t.count, last: t.last }));
 
   const capped = stories.capped;
+  // publishDateTime sorts desc, so the oldest SCANNED story is the last one paged in.
+  const coveredFrom = capped
+    ? stories.docs.reduce((oldest, d) => { const date = String(d.publishDateTime ?? '').slice(0, 10); return !oldest || date < oldest ? date : oldest; }, '')
+    : undefined;
   return {
-    searched: `network stories since ${since}${until ? ` to ${until}` : ''}: ${stories.docs.length} newest stories${capped ? ' (the window holds more than that; raise depth)' : ''} and ${episodes.docs.length} newest podcast episodes, counted by station, show, and topic`,
+    searched: `network stories since ${since}${until ? ` to ${until}` : ''}: ${stories.docs.length} newest stories${capped ? ` (the window holds more than that; counts cover ${coveredFrom} onward; raise depth)` : ''} and ${episodes.docs.length} newest podcast episodes, counted by station, show, and topic`,
     since, ...(until ? { until } : {}),
-    scanned: { stories: stories.docs.length, episodes: episodes.docs.length }, capped,
+    scanned: { stories: stories.docs.length, episodes: episodes.docs.length }, capped, ...(coveredFrom ? { coveredFrom } : {}),
     stations: stationRows.sort(byCountThenName),
     shows: showRows.sort(byCountThenName).slice(0, limit),
     topics: topicRows.sort(byCountThenName).slice(0, limit),

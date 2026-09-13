@@ -48,6 +48,7 @@ test('counts stories per station, newest date wins, most stories first', async (
   assert.equal(r.scanned.stories, 5); assert.equal(r.capped, false);
   assert.equal(d.queries[0].get('publishDateTime'), '2026-09-06...2026-09-13');
   assert.equal(d.queries[0].get('ownerHrefs'), null, 'the scan is network-wide');
+  assert.equal('coveredFrom' in r, false, 'an uncapped scan has no coveredFrom key');
 });
 
 test('shows and topics come from collections; podcast episodes count toward shows, not stations', async () => {
@@ -67,12 +68,30 @@ test('shows and topics come from collections; podcast episodes count toward show
 });
 
 test('pages the story scan up to depth and reports capped when the window holds more', async () => {
-  const many = Array.from({ length: 700 }, (_, i) => doc(`s${i}`, 's1', '2026-09-12'));
+  const many = Array.from({ length: 700 }, (_, i) => doc(`s${i}`, 's1', `2026-09-${String(12 - Math.floor(i / 100)).padStart(2, '0')}`));
   const d = deps(many);
   const r = await networkPulse({ since: '2026-09-06', depth: 2 }, d);
   assert.equal(r.scanned.stories, 600); assert.equal(r.capped, true);
+  assert.equal(r.coveredFrom, '2026-09-07', 'the oldest date among the SCANNED (first 600) documents, not the fixture as a whole');
   assert.match(r.searched, /raise depth/);
+  assert.match(r.searched, /counts cover 2026-09-07 onward/);
   assert.deepEqual(d.queries.filter((q) => q.get('profileIds') === 'story').map((q) => q.get('offset')), ['0', '300']);
+});
+
+test('NPR is named by NPR_SERVICE_ID, whatever the directory calls it', async () => {
+  const d = deps([doc('a', 's1', '2026-09-12')]);
+  d.catalog.stations = async () => [{ id: 's1', name: 'NPR Service' }];
+  const r = await networkPulse({ since: '2026-09-06' }, d);
+  assert.equal(r.stations[0].id, 's1');
+  assert.equal(r.stations[0].name, 'NPR');
+});
+
+test('with no depth argument, the default of 6 pages the story scan to six offsets', async () => {
+  const many = Array.from({ length: 2000 }, (_, i) => doc(`s${i}`, 's1', '2026-09-12'));
+  const d = deps(many);
+  const r = await networkPulse({ since: '2026-09-06' }, d);
+  assert.deepEqual(d.queries.filter((q) => q.get('profileIds') === 'story').map((q) => q.get('offset')), ['0', '300', '600', '900', '1200', '1500']);
+  assert.equal(r.capped, true);
 });
 
 test('since defaults to seven days ago and limit caps shows and topics', async () => {
