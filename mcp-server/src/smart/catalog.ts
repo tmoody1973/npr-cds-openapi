@@ -87,7 +87,11 @@ export class Catalog {
     const item = dir.items.find((s) => s.id === id) ?? { id, name: id };
     if (item.state !== undefined || this.enrichTried.has(id)) return item;
     this.enrichTried.add(id);
-    const match = (await this.finder(item.name)).find((s) => s.id === id);
+    // The finder matches single words, not whole directory names ("88Nine Radio Milwaukee" finds nothing,
+    // "88Nine" does), so fall back to the name's words, longest first, and stop at the first id match.
+    const words = [...new Set(item.name.split(/\s+/).filter((w) => w.length > 2 && w !== item.name))].sort((a, b) => b.length - a.length);
+    let match: Station | undefined;
+    for (const q of [item.name, ...words]) { match = (await this.finder(q)).find((s) => s.id === id); if (match) break; }
     if (!match) return item;
     const enriched = { ...item, ...match, name: item.name };
     this.stationState = { ...dir, items: dir.items.map((s) => (s.id === id ? enriched : s)) };

@@ -14,6 +14,8 @@ function fakeNet() {
     if (url.startsWith('https://organization.api.npr.org/v4/services')) return [{ id: 's55', name: 'KCRW' }, { id: 's715', name: 'WXPN' }, { id: 's921', name: '88Nine Radio Milwaukee' }];
     if (url.startsWith('https://station.api.npr.org/v3/stations?q=')) {
       const q = decodeURIComponent(url.split('?q=')[1]);
+      if (q === '88Nine Radio Milwaukee' || q === 'Milwaukee') return { items: [] }; // the finder matches words, not whole directory names
+      if (q === '88Nine' || q === 'Radio') return { items: [{ attributes: { serviceId: 's921', brand: { call: 'RM', name: 'Radio Milwaukee', marketCity: 'Milwaukee', marketState: 'WI', band: 'FM' }, eligibility: { musicOnly: true } } }] };
       if (/kcrw/i.test(q)) return { items: [{ attributes: { serviceId: 's55', brand: { call: 'KCRW', name: 'KCRW', marketCity: 'Santa Monica', marketState: 'CA', band: 'FM' }, eligibility: { musicOnly: false } } }] };
       if (/nowhere/i.test(q)) return { items: [] };
       return { items: [{ attributes: { serviceId: 's715', brand: { call: 'XPN', name: 'WXPN', marketCity: 'Philadelphia', marketState: 'PA', band: 'FM' }, eligibility: { musicOnly: true } } }] };
@@ -133,4 +135,12 @@ test('enrichStation looks a directory station up in the finder by name once, cac
   assert.equal(finderCalls(), n, 'no second finder call');
   const missing = await new Catalog(async (u) => (u.includes('organization.api') ? [{ id: 's999', name: 'Radio Nowhere' }] : { items: [] }), dir()).enrichStation('s999');
   assert.deepEqual(missing, { id: 's999', name: 'Radio Nowhere' });
+});
+
+test('enrichStation falls back to the words of the name, longest first, when the finder ignores the whole name', async () => {
+  const net = fakeNet();
+  const r = await new Catalog(net.fetchJson, dir()).enrichStation('s921');
+  assert.deepEqual({ state: r.state, name: r.name, city: r.city }, { state: 'WI', name: '88Nine Radio Milwaukee', city: 'Milwaukee' });
+  const asked = net.calls.filter((u) => u.includes('station.api')).map((u) => decodeURIComponent(u.split('?q=')[1]));
+  assert.deepEqual(asked, ['88Nine Radio Milwaukee', 'Milwaukee', '88Nine'], 'whole name, then words longest first, stop at the first match');
 });
