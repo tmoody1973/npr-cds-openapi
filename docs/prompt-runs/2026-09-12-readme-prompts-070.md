@@ -50,6 +50,15 @@ Prompt 3: `find_stories {show: "Ladies First", kind: "podcasts"}` → "No show o
 
 `.../2026-09-11/danielle-ponder` 404s; the real slug ends `-everything-has-changed`. The README should carry a url that resolves.
 
+### Added 2026-09-13 from the station desk spec (cds-showroom `docs/superpowers/specs/2026-09-13-station-desk-design.md`)
+
+These are features, not bugs; they gate phases 1, 2 and 4 of the desk.
+
+- **FEAT-10: images and bylines in compact hits and in `read_story`.** CDS documents carry `images[]` with one enclosure per crop and `hrefTemplate` for resizing, and `bylines[]`; `toHit` skips both today. Add `image: { href, credit?, caption? }` (a wide crop via the template) and `byline: string` to hits, and image plus byline to `read_story`. In a 24-hour sample, 109 of 143 stories had an image and 101 a byline.
+- **FEAT-11: state, city, and format in the station directory.** The finder returns `brand.marketCity`, `brand.marketState`, `brand.band`, `eligibility.musicOnly`; the catalog keeps only id, name, call, city. Keep state and format so a client can group stations by state.
+- **FEAT-12: `weekly-prep` prompt.** Week in review for the home station, what the network covered that the station did not (`coverage_gap`), and the week ahead from NPR programs and podcasts. Same shape as `morning-prep`, `since` defaulting to seven days back.
+- **FEAT-13: `show-prep` prompt.** Takes a show name; its recent episodes (`find_stories` with the collection), network stories on its beat, other stations on the same guests or topics (`coverage_scan`). Every item with its canonical link and audio link.
+
 ## Results by prompt
 
 | # | Prompt | Result | `searched` |
