@@ -32,7 +32,7 @@ test('find_stories advertises every argument the function accepts, so none is si
   const { tools } = await client.listTools();
   const props = Object.keys((tools.find((t) => t.name === 'find_stories')!.inputSchema as any).properties ?? {});
   for (const key of ['query', 'station', 'show', 'collection', 'since', 'until', 'limit', 'scanPages', 'kind']) assert.ok(props.includes(key), `missing ${key}`);
-  assert.deepEqual(tools.map((t) => t.name).sort(), ['check_story', 'coverage_gap', 'coverage_scan', 'find_collection', 'find_station', 'find_stories', 'latest_newscast', 'read_story', 'search_archive', 'station_labels', 'whats_new_since']);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ['check_story', 'coverage_gap', 'coverage_scan', 'find_collection', 'find_station', 'find_stories', 'latest_newscast', 'network_pulse', 'read_story', 'search_archive', 'station_labels', 'whats_new_since']);
   await client.close(); await server.close();
 });
 
