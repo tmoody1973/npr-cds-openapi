@@ -62,6 +62,7 @@ These are features, not bugs; they gate phases 1, 2 and 4 of the desk.
 - **Done in 0.8.0.** **FEAT-11: state, city, and format in the station directory.** The finder returns `brand.marketCity`, `brand.marketState`, `brand.band`, `eligibility.musicOnly`; the catalog keeps only id, name, call, city. Keep state and format so a client can group stations by state.
 - **Done in 0.8.0.** **FEAT-12: `weekly-prep` prompt.** Week in review for the home station, what the network covered that the station did not (`coverage_gap`), and the week ahead from NPR programs and podcasts. Same shape as `morning-prep`, `since` defaulting to seven days back.
 - **Done in 0.8.0.** **FEAT-13: `show-prep` prompt.** Takes a show name; its recent episodes (`find_stories` with the collection), network stories on its beat, other stations on the same guests or topics (`coverage_scan`). Every item with its canonical link and audio link.
+- **Done in 0.8.0.** **FEAT-14: `network_pulse`.** The station desk's Explore surface needs the network's week as counts (stations that published, shows with episodes, topics), which no tool returned: `find_stories` caps at 100 hits with no paging and `coverage_scan` demands a topic. One paged, network-wide scan tallied by owner and collection, ids and names and counts and dates only, so the desk's hourly index stores nothing NPR's terms forbid.
 
 ## Results by prompt
 

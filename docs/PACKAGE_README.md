@@ -61,6 +61,7 @@ Any MCP client, as JSON:
 | `search_archive` | words, a station, from and to dates | the archive in half-year windows, newest first |
 | `coverage_scan` | a topic and a window | what NPR and the network published, by station |
 | `coverage_gap` | a topic and a window | NPR's stories next to ours, marked localized or not |
+| `network_pulse` | a date window | which stations, shows, and topics were active, as counts with ids and last dates; never text |
 | `find_station` | a name, call letters, or city | station id, with city, state, band and music-only when the finder knows it |
 | `find_collection` | a topic, tag, show, or program name | collection id |
 

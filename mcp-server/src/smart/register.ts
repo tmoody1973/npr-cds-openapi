@@ -7,6 +7,7 @@ import { CDS, cdsQuery, fetchJson } from './cds';
 import { readStory } from './reader';
 import { coverageGap, coverageScan, searchArchive } from './coverage';
 import { findStories } from './find';
+import { networkPulse } from './pulse';
 import { checkStory, latestNewscast, stationLabels, whatsNewSince } from './producer';
 import { morningPrep, newsletterDraft, weeklyPrep, showPrep } from './prompts';
 import { readHomeStation } from './config';
@@ -193,5 +194,19 @@ export function registerSmartTools(server: McpServer) {
       annotations: { readOnlyHint: true },
     },
     safe((args) => coverageGap(args, deps)),
+  );
+  server.registerTool(
+    'network_pulse',
+    {
+      description: 'The network\'s week in counts: which stations published, which shows and podcasts had new episodes, which topics ran, from paged scans of the newest stories and podcast episodes across every owner. Ids, names, counts, and last dates only, never text. For building an overview or an index; use find_stories to see the stories themselves.',
+      inputSchema: {
+        since: z.string().optional().describe('YYYY-MM-DD. Default seven days ago.'),
+        until: z.string().optional().describe('YYYY-MM-DD'),
+        depth: z.number().int().min(1).max(6).optional().describe('Pages of 300 newest stories, and of podcast episodes, to scan. Default 6.'),
+        limit: z.number().int().min(1).max(200).optional().describe('Shows and topics to return, most active first. Default 60. Stations are never cut.'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    safe((args) => networkPulse(args, deps)),
   );
 }

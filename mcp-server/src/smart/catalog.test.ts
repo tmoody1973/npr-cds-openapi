@@ -137,6 +137,29 @@ test('enrichStation looks a directory station up in the finder by name once, cac
   assert.deepEqual(missing, { id: 's999', name: 'Radio Nowhere' });
 });
 
+test('a directory refresh keeps enrichment fields for stations it already knew, and applies a rename', async () => {
+  const d = dir();
+  const DAY = 24 * 60 * 60 * 1000;
+  writeFileSync(path.join(d, 'stations.json'), JSON.stringify({
+    fetchedAt: Date.now() - DAY - 1000,
+    items: [
+      { id: 's55', name: 'KCRW', city: 'Santa Monica', state: 'CA' },
+      { id: 's715', name: 'Old Name', city: 'Philadelphia', state: 'PA' },
+    ],
+  }));
+  const net: FetchJson = async (url) => {
+    if (url.startsWith('https://organization.api.npr.org/v4/services')) {
+      return [{ id: 's55', name: 'KCRW' }, { id: 's715', name: 'WXPN' }];
+    }
+    return { items: [] };
+  };
+  const items = await new Catalog(net, d).stations();
+  const kcrw = items.find((s) => s.id === 's55');
+  assert.deepEqual({ city: kcrw?.city, state: kcrw?.state }, { city: 'Santa Monica', state: 'CA' }, 'enrichment survives the refresh');
+  const xpn = items.find((s) => s.id === 's715');
+  assert.deepEqual({ name: xpn?.name, state: xpn?.state }, { name: 'WXPN', state: 'PA' }, 'a rename takes the new name but keeps the old state');
+});
+
 test('enrichStation falls back to the words of the name, longest first, when the finder ignores the whole name', async () => {
   const net = fakeNet();
   const r = await new Catalog(net.fetchJson, dir()).enrichStation('s921');
