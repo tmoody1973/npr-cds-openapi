@@ -6,6 +6,7 @@ import { resolveDoc } from './producer';
 export type ReaderDeps = FindDeps & { cdsGet: (id: string) => Promise<{ resources: any[] }> };
 export type StoryText = {
   id: string; title: string; date: string; url?: string; audio?: Hit['audio']; image?: Hit['image']; byline?: string; rights?: string;
+  owner: string; teaser?: string; premium?: true; // for callers that apply the rights line themselves (the desk's newsletter export)
   source: 'body' | 'transcript' | 'none'; paragraphs: string[]; words: number; note?: string; searched: string;
 };
 
@@ -57,6 +58,7 @@ export async function readStory(args: { id?: string; url?: string; station?: str
 
   return {
     id: doc.id, title: doc.title, date: hit.date, url: hit.url, audio: hit.audio, ...(hit.image ? { image: hit.image } : {}), ...(hit.byline ? { byline: hit.byline } : {}), rights: rightsFor(hit, deps.homeStation),
+    owner: hit.owner, ...(hit.teaser ? { teaser: hit.teaser } : {}), ...(hit.premium ? { premium: true as const } : {}),
     source, paragraphs: kept, words, ...(note ? { note } : {}), searched,
   };
 }

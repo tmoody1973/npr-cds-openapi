@@ -53,7 +53,7 @@ Any MCP client, as JSON:
 | Tool | Give it | Get back |
 |---|---|---|
 | `find_stories` | words, a station, a show or podcast, a topic, a date window; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio, image (wide crop, resize template, credit), byline, collection names, rights note when premium or another station's |
-| `read_story` | a story url or CDS id | paragraphs in reading order, or the transcript, or a note that CDS has only teaser and audio; plus image and byline |
+| `read_story` | a story url or CDS id | paragraphs in reading order, or the transcript, or a note that CDS has only teaser and audio; plus image, byline, owner, teaser, and premium flag |
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
 | `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, marked new or updated |
