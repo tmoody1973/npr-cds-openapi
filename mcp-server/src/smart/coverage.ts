@@ -59,7 +59,7 @@ export async function coverageScan(
     }
     searched.push(`"${args.topic}" since ${args.since} at ${args.stations.join(', ')}`);
   } else {
-    const npr = await findStories({ query: args.topic, since: args.since, until: args.until, limit }, deps);
+    const npr = await findStories({ query: args.topic, station: NPR_SERVICE_ID, since: args.since, until: args.until, limit }, deps);
     groups.push({ station: { id: NPR_SERVICE_ID, name: 'NPR' }, hits: npr.hits });
     // The network: the newest stories from every station in the window, matched by words here.
     const depth = Math.min(args.depth ?? 1, 6);
@@ -100,7 +100,7 @@ export function titleOverlap(a: string, b: string): number {
 export async function coverageGap(args: { topic: string; since: string; until?: string; limit?: number }, deps: FindDeps) {
   if (!deps.homeStation) throw new Error('coverage_gap needs a home station. Run `npx -y npr-cds-mcp station` or set NPR_CDS_HOME_STATION.');
   const [npr, ours] = await Promise.all([
-    findStories({ query: args.topic, since: args.since, until: args.until, limit: args.limit ?? 20 }, deps),
+    findStories({ query: args.topic, station: NPR_SERVICE_ID, since: args.since, until: args.until, limit: args.limit ?? 20 }, deps),
     findStories({ query: args.topic, station: deps.homeStation, since: args.since, until: args.until, limit: 50 }, deps),
   ]);
   const flagged = npr.hits.map((h) => {

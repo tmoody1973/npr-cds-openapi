@@ -45,12 +45,21 @@ test('free-text query merges collection hits with keyword hits and dedupes', asy
   assert.match(r.searched, /Understanding AI/); assert.doesNotMatch(r.searched, /Fresh Air/, 'a fuzzy collection whose title lacks the query word is dropped');
 });
 
-test('a keyword scan with no station defaults to NPR, and says so', async () => {
+test('a keyword scan with no station reads the home station first, then NPR, and says so with both counts', async () => {
   const d = deps();
+  d.catalog.stations = async () => [{ id: 's921', name: '88Nine Radio Milwaukee' }];
   const r = await findStories({ query: 'Angels' }, d);
-  const scan = d.queries.find((q) => !q.get('collectionIds'))!;
-  assert.equal(scan.get('ownerHrefs'), 'https://organization.api.npr.org/v4/services/s1');
-  assert.match(r.searched, /NPR/);
+  const scans = d.queries.filter((q) => !q.get('collectionIds')).map((q) => q.get('ownerHrefs'));
+  assert.deepEqual(scans, ['https://organization.api.npr.org/v4/services/s921', 'https://organization.api.npr.org/v4/services/s1']);
+  assert.match(r.searched, /over 3 newest 88Nine Radio Milwaukee stories and 3 newest NPR stories/);
+});
+
+test('a keyword scan with no station and no home station stays NPR-only', async () => {
+  const d = deps(); delete d.homeStation;
+  const r = await findStories({ query: 'Angels' }, d);
+  const scans = d.queries.filter((q) => !q.get('collectionIds')).map((q) => q.get('ownerHrefs'));
+  assert.deepEqual(scans, ['https://organization.api.npr.org/v4/services/s1']);
+  assert.match(r.searched, /over 3 newest NPR stories/);
 });
 
 test('station name becomes an owner filter and own-station hits are not marked display-only', async () => {

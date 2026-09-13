@@ -80,21 +80,32 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   const scanKeyword = async (): Promise<any[]> => {
     if (!query) return [];
     const found: any[] = [];
-    let scanned = 0;
-    // All of CDS at 300 per page is only hours of network output; scope the scan to NPR unless a station was named.
-    const scope = new URLSearchParams(base);
-    if (!scope.has('ownerHrefs')) scope.set('ownerHrefs', ORG + NPR_SERVICE_ID);
-    for (let page = 0; page < scanPages; page++) {
-      const p = new URLSearchParams(scope); p.set('offset', String(page * PAGE));
-      const { resources = [] } = await deps.cdsQuery(p);
-      scanned += resources.length;
-      found.push(...resources.filter((d) => matches(toHit(d), query)));
-      if (resources.length < PAGE) break;
+    // All of CDS at 300 per page is only hours of network output, so the scan is scoped: the named station,
+    // or else the home station first (local stories would otherwise never surface) and then NPR.
+    const scopes: Array<{ owner: string; label: string }> = station
+      ? [{ owner: base.get('ownerHrefs')!, label: '' }]
+      : [...(deps.homeStation ? [{ owner: ORG + deps.homeStation, label: `${await homeName()} ` }] : []), { owner: ORG + NPR_SERVICE_ID, label: 'NPR ' }];
+    const parts: string[] = [];
+    for (const { owner, label } of scopes) {
+      let scanned = 0;
+      const scope = new URLSearchParams(base); scope.set('ownerHrefs', owner);
+      for (let page = 0; page < scanPages; page++) {
+        const p = new URLSearchParams(scope); p.set('offset', String(page * PAGE));
+        const { resources = [] } = await deps.cdsQuery(p);
+        scanned += resources.length;
+        found.push(...resources.filter((d) => matches(toHit(d), query)));
+        if (resources.length < PAGE) break;
+      }
+      parts.push(`${scanned} newest ${label}${noun}`);
+      scannedTotal += scanned;
     }
-    searched.push(`keyword "${query}" over ${scanned} newest ${station ? '' : 'NPR '}${noun}`);
-    scannedTotal = scanned;
+    searched.push(`keyword "${query}" over ${parts.join(' and ')}`);
     return found;
   };
+  async function homeName(): Promise<string> {
+    const s = (await deps.catalog.stations?.())?.find((x) => x.id === deps.homeStation);
+    return s?.name ?? deps.homeStation!;
+  }
   const fetchByCollection = async (): Promise<any[]> => {
     if (!collections.length) return [];
     const p = new URLSearchParams(base); p.set('collectionIds', collections.map((c) => c.id).join(','));
