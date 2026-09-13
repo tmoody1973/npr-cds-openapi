@@ -48,7 +48,11 @@ export class Catalog {
     this.stationState ??= this.load<StationState>('stations.json', { fetchedAt: 0, items: [] });
     if (Date.now() - this.stationState.fetchedAt >= DAY || !this.stationState.items.length) {
       const raw: Array<{ id: string; name: string }> = await this.fetchJson('https://organization.api.npr.org/v4/services');
-      this.stationState = { fetchedAt: Date.now(), items: raw.map(({ id, name }) => ({ id, name })) };
+      // Carry over what enrichStation() already learned (call, city, state, band, musicOnly) for
+      // ids the fresh directory still has, so a daily refresh doesn't erase it and force ~200
+      // finder lookups to be repeated. The fresh name wins.
+      const prev = new Map(this.stationState.items.map((s) => [s.id, s]));
+      this.stationState = { fetchedAt: Date.now(), items: raw.map(({ id, name }) => ({ ...prev.get(id), id, name })) };
       this.save('stations.json', this.stationState);
       this.stationIndex = undefined;
     }

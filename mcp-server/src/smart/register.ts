@@ -195,7 +195,6 @@ export function registerSmartTools(server: McpServer) {
     },
     safe((args) => coverageGap(args, deps)),
   );
-
   server.registerTool(
     'network_pulse',
     {

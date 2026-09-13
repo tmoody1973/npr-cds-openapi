@@ -85,7 +85,9 @@ export async function networkPulse(args: PulseArgs, deps: FindDeps): Promise<Pul
   const topicRows: PulseRow[] = [...topics].map(([id, t]) => ({ id, name: names.get(id)?.title ?? id, count: t.count, last: t.last }));
 
   const capped = stories.capped;
-  // publishDateTime sorts desc, so the oldest SCANNED story is the last one paged in.
+  // Take the minimum over every scanned story rather than trusting the last page: CDS sorts each
+  // page by publishDateTime desc, but sort order is not guaranteed to hold across page boundaries,
+  // so the oldest date is not reliably in the last page fetched. Do not "simplify" this to that.
   const coveredFrom = capped
     ? stories.docs.reduce((oldest, d) => { const date = String(d.publishDateTime ?? '').slice(0, 10); return !oldest || date < oldest ? date : oldest; }, '')
     : undefined;

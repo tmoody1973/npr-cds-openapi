@@ -115,3 +115,26 @@ test('a collection link to /null and byline links are ignored', async () => {
   const r = await networkPulse({ since: '2026-09-06' }, d);
   assert.deepEqual(r.topics, []); assert.deepEqual(r.shows, []);
 });
+
+test('a station whose enrichStation lookup throws still gets a row, by directory name, uncrashed', async () => {
+  const d = deps([doc('a', 's55', '2026-09-12'), doc('b', 's1', '2026-09-11')]);
+  d.catalog.enrichStation = async (id: string) => { if (id === 's55') throw new Error('finder down'); return { id, name: id }; };
+  const r = await networkPulse({ since: '2026-09-06' }, d);
+  const kcrw = r.stations.find((s) => s.id === 's55');
+  assert.deepEqual({ name: kcrw?.name, count: kcrw?.count, last: kcrw?.last }, { name: 'KCRW', count: 1, last: '2026-09-12' });
+  assert.equal(kcrw?.state, undefined, 'no state: the finder never answered');
+});
+
+test('a cdsQuery rejection fails networkPulse with the same error, for safe() to turn into a tool error', async () => {
+  const d = deps([doc('a', 's1', '2026-09-12')]);
+  d.cdsQuery = async () => { throw new Error('CDS 503 for /v1/documents'); };
+  await assert.rejects(networkPulse({ since: '2026-09-06' }, d), /CDS 503 for \/v1\/documents/);
+});
+
+test('a window with no stories and no episodes comes back empty, uncapped, with no coveredFrom key', async () => {
+  const d = deps([]);
+  const r = await networkPulse({ since: '2026-09-06' }, d);
+  assert.deepEqual(r.stations, []); assert.deepEqual(r.shows, []); assert.deepEqual(r.topics, []);
+  assert.equal(r.capped, false);
+  assert.equal('coveredFrom' in r, false);
+});
