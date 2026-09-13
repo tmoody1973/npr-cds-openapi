@@ -45,12 +45,21 @@ test('free-text query merges collection hits with keyword hits and dedupes', asy
   assert.match(r.searched, /Understanding AI/); assert.doesNotMatch(r.searched, /Fresh Air/, 'a fuzzy collection whose title lacks the query word is dropped');
 });
 
-test('a keyword scan with no station defaults to NPR, and says so', async () => {
+test('a keyword scan with no station reads the home station first, then NPR, and says so with both counts', async () => {
   const d = deps();
+  d.catalog.stations = async () => [{ id: 's921', name: '88Nine Radio Milwaukee' }];
   const r = await findStories({ query: 'Angels' }, d);
-  const scan = d.queries.find((q) => !q.get('collectionIds'))!;
-  assert.equal(scan.get('ownerHrefs'), 'https://organization.api.npr.org/v4/services/s1');
-  assert.match(r.searched, /NPR/);
+  const scans = d.queries.filter((q) => !q.get('collectionIds')).map((q) => q.get('ownerHrefs'));
+  assert.deepEqual(scans, ['https://organization.api.npr.org/v4/services/s921', 'https://organization.api.npr.org/v4/services/s1']);
+  assert.match(r.searched, /over 3 newest 88Nine Radio Milwaukee stories and 3 newest NPR stories/);
+});
+
+test('a keyword scan with no station and no home station stays NPR-only', async () => {
+  const d = deps(); delete d.homeStation;
+  const r = await findStories({ query: 'Angels' }, d);
+  const scans = d.queries.filter((q) => !q.get('collectionIds')).map((q) => q.get('ownerHrefs'));
+  assert.deepEqual(scans, ['https://organization.api.npr.org/v4/services/s1']);
+  assert.match(r.searched, /over 3 newest NPR stories/);
 });
 
 test('station name becomes an owner filter and own-station hits are not marked display-only', async () => {
@@ -151,4 +160,19 @@ test('a podcast show miss also learns from NPR\'s newest podcast episodes, not o
   d.cdsQuery = async (p) => { if (p.get('profileIds') === 'podcast-episode' && !p.get('collectionIds')) scanned.push(p.get('ownerHrefs')!); return orig(p); };
   await findStories({ show: 'Up First', kind: 'podcasts' }, d).catch(() => {});
   assert.ok(scanned.some((o) => o.endsWith('/s921')) && scanned.some((o) => o.endsWith('/s1')), `scanned ${scanned.join(', ')}`);
+});
+
+test('a hit whose byline asset has no name gets it from the person document through the catalog, and a failed lookup leaves no byline', async () => {
+  const d = deps();
+  const withBy = (id: string, name: string | null) => ({ ...story(id, 'Nameless byline', '2026-09-10', 's921'),
+    bylines: [{ href: '#/assets/b' }], assets: { b: { name, bylineDocuments: [{ href: '/v1/documents/1192772937', rels: ['biography'] }] } } });
+  d.cdsQuery = async () => ({ resources: [withBy('n1', null)] });
+  d.catalog.resolveCollections = async (ids: string[]) => new Map(ids.map((id) => [id, { id, title: 'Danielle Ponder', type: 'biography' }]));
+  const r = await findStories({ station: 'Radio Milwaukee' }, d);
+  assert.equal(r.hits[0].byline, 'Danielle Ponder');
+  assert.equal('bylineIds' in r.hits[0], false);
+  d.catalog.resolveCollections = async () => { throw new Error('CDS down'); };
+  const r2 = await findStories({ station: 'Radio Milwaukee' }, d);
+  assert.equal('byline' in r2.hits[0], false);
+  assert.equal('bylineIds' in r2.hits[0], false);
 });

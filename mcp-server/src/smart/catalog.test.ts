@@ -12,7 +12,14 @@ function fakeNet() {
   const fetchJson: FetchJson = async (url) => {
     calls.push(url);
     if (url.startsWith('https://organization.api.npr.org/v4/services')) return [{ id: 's55', name: 'KCRW' }, { id: 's715', name: 'WXPN' }, { id: 's921', name: '88Nine Radio Milwaukee' }];
-    if (url.startsWith('https://station.api.npr.org/v3/stations?q=')) return { items: [{ attributes: { serviceId: 's715', brand: { call: 'XPN', name: 'WXPN', marketCity: 'Philadelphia' } } }] };
+    if (url.startsWith('https://station.api.npr.org/v3/stations?q=')) {
+      const q = decodeURIComponent(url.split('?q=')[1]);
+      if (q === '88Nine Radio Milwaukee' || q === 'Milwaukee') return { items: [] }; // the finder matches words, not whole directory names
+      if (q === '88Nine' || q === 'Radio') return { items: [{ attributes: { serviceId: 's921', brand: { call: 'RM', name: 'Radio Milwaukee', marketCity: 'Milwaukee', marketState: 'WI', band: 'FM' }, eligibility: { musicOnly: true } } }] };
+      if (/kcrw/i.test(q)) return { items: [{ attributes: { serviceId: 's55', brand: { call: 'KCRW', name: 'KCRW', marketCity: 'Santa Monica', marketState: 'CA', band: 'FM' }, eligibility: { musicOnly: false } } }] };
+      if (/nowhere/i.test(q)) return { items: [] };
+      return { items: [{ attributes: { serviceId: 's715', brand: { call: 'XPN', name: 'WXPN', marketCity: 'Philadelphia', marketState: 'PA', band: 'FM' }, eligibility: { musicOnly: true } } }] };
+    }
     const u = new URL(url);
     // station series ids are not published documents, so CDS returns nothing for them
     if (u.searchParams.get('ids')) return { resources: u.searchParams.get('ids')!.split(',').filter((id) => !id.startsWith('g-s921-')).map((id) => topic(id, `Title ${id}`)) };
@@ -108,4 +115,32 @@ test('a catalog seeded by an older version re-seeds when the seed list changes',
   writeFileSync(file, JSON.stringify(state));
   const again = new Catalog(net.fetchJson, d);
   assert.ok((await again.findCollection('up first', { types: ['podcast-channel'] })).some((h) => h.id === '510318'), 're-seeded podcast channels');
+});
+
+test('the finder fallback carries state, band and the music-only flag', async () => {
+  const c = new Catalog(fakeNet().fetchJson, dir());
+  const [r] = await c.findStation('Philadelphia');
+  assert.deepEqual({ state: r.state, band: r.band, musicOnly: r.musicOnly }, { state: 'PA', band: 'FM', musicOnly: true });
+});
+
+test('enrichStation looks a directory station up in the finder by name once, caches it, and leaves an unknown one as it was', async () => {
+  const net = fakeNet(); const d = dir();
+  const c = new Catalog(net.fetchJson, d);
+  const a = await c.enrichStation('s55');
+  assert.deepEqual({ id: a.id, city: a.city, state: a.state, musicOnly: a.musicOnly }, { id: 's55', city: 'Santa Monica', state: 'CA', musicOnly: false });
+  const finderCalls = () => net.calls.filter((u) => u.includes('station.api')).length;
+  const n = finderCalls();
+  await c.enrichStation('s55');
+  await new Catalog(net.fetchJson, d).enrichStation('s55'); // a fresh process reads the cache
+  assert.equal(finderCalls(), n, 'no second finder call');
+  const missing = await new Catalog(async (u) => (u.includes('organization.api') ? [{ id: 's999', name: 'Radio Nowhere' }] : { items: [] }), dir()).enrichStation('s999');
+  assert.deepEqual(missing, { id: 's999', name: 'Radio Nowhere' });
+});
+
+test('enrichStation falls back to the words of the name, longest first, when the finder ignores the whole name', async () => {
+  const net = fakeNet();
+  const r = await new Catalog(net.fetchJson, dir()).enrichStation('s921');
+  assert.deepEqual({ state: r.state, name: r.name, city: r.city }, { state: 'WI', name: '88Nine Radio Milwaukee', city: 'Milwaukee' });
+  const asked = net.calls.filter((u) => u.includes('station.api')).map((u) => decodeURIComponent(u.split('?q=')[1]));
+  assert.deepEqual(asked, ['88Nine Radio Milwaukee', 'Milwaukee', '88Nine'], 'whole name, then words longest first, stop at the first match');
 });

@@ -14,6 +14,8 @@ Fix: in `register.ts`, the `text()` helper should wrap lists, e.g. `structuredCo
 
 ### HIGH-2: word search without a station reads NPR only, so local stories are missed
 
+**Done in 0.8.0.**
+
 `find.ts` `scanKeyword` scopes the title-and-teaser scan to NPR unless a station is named (deliberate, to bound the scan). Show-name lookups, by contrast, learn from the home station first. Effects seen:
 
 - Prompt 17 "Read me the Danielle Ponder story" → `searched: collections "Danielle Ponder" (1112238605); keyword "Danielle Ponder" over 300 newest NPR stories` → read a 2020 NPR Tiny Desk piece, not the Ladies First episode.
@@ -23,6 +25,8 @@ Fix: in `register.ts`, the `text()` helper should wrap lists, e.g. `structuredCo
 Fix: when no station is named and a home station is configured, scan the home station's newest page as well as NPR's, home first, and say so in the `searched` line ("over 300 newest 88Nine stories and 600 newest NPR stories"). One extra request per word query.
 
 ### MEDIUM-3: `newsletter-draft` labels NPR's stories as ours
+
+**Done in 0.8.0.**
 
 `prompts.ts` `newsletterDraft` step 1 calls `find_stories` without a station when none is given, which under HIGH-2 means NPR. Fix: pass the home station id from `deps.homeStation` (available in `register.ts`) into the template, or fix HIGH-2 and pass `station` explicitly anyway.
 
@@ -54,10 +58,10 @@ Prompt 3: `find_stories {show: "Ladies First", kind: "podcasts"}` → "No show o
 
 These are features, not bugs; they gate phases 1, 2 and 4 of the desk.
 
-- **FEAT-10: images and bylines in compact hits and in `read_story`.** CDS documents carry `images[]` with one enclosure per crop and `hrefTemplate` for resizing, and `bylines[]`; `toHit` skips both today. Add `image: { href, credit?, caption? }` (a wide crop via the template) and `byline: string` to hits, and image plus byline to `read_story`. In a 24-hour sample, 109 of 143 stories had an image and 101 a byline.
-- **FEAT-11: state, city, and format in the station directory.** The finder returns `brand.marketCity`, `brand.marketState`, `brand.band`, `eligibility.musicOnly`; the catalog keeps only id, name, call, city. Keep state and format so a client can group stations by state.
-- **FEAT-12: `weekly-prep` prompt.** Week in review for the home station, what the network covered that the station did not (`coverage_gap`), and the week ahead from NPR programs and podcasts. Same shape as `morning-prep`, `since` defaulting to seven days back.
-- **FEAT-13: `show-prep` prompt.** Takes a show name; its recent episodes (`find_stories` with the collection), network stories on its beat, other stations on the same guests or topics (`coverage_scan`). Every item with its canonical link and audio link.
+- **Done in 0.8.0.** **FEAT-10: images and bylines in compact hits and in `read_story`.** CDS documents carry `images[]` with one enclosure per crop and `hrefTemplate` for resizing, and `bylines[]`; `toHit` skips both today. Add `image: { href, credit?, caption? }` (a wide crop via the template) and `byline: string` to hits, and image plus byline to `read_story`. In a 24-hour sample, 109 of 143 stories had an image and 101 a byline.
+- **Done in 0.8.0.** **FEAT-11: state, city, and format in the station directory.** The finder returns `brand.marketCity`, `brand.marketState`, `brand.band`, `eligibility.musicOnly`; the catalog keeps only id, name, call, city. Keep state and format so a client can group stations by state.
+- **Done in 0.8.0.** **FEAT-12: `weekly-prep` prompt.** Week in review for the home station, what the network covered that the station did not (`coverage_gap`), and the week ahead from NPR programs and podcasts. Same shape as `morning-prep`, `since` defaulting to seven days back.
+- **Done in 0.8.0.** **FEAT-13: `show-prep` prompt.** Takes a show name; its recent episodes (`find_stories` with the collection), network stories on its beat, other stations on the same guests or topics (`coverage_scan`). Every item with its canonical link and audio link.
 
 ## Results by prompt
 

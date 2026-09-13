@@ -63,3 +63,18 @@ test('find_station and find_collection results carry an object, not an array, as
     globalThis.fetch = originalFetch;
   }
 });
+
+test('the four prompts are registered, and show-prep renders with a show name', async () => {
+  process.env.XDG_CACHE_HOME = mkdtempSync(path.join(tmpdir(), 'cds-register-'));
+  const { registerSmartTools } = await import('./register');
+  const server = new McpServer({ name: 't', version: '0' });
+  registerSmartTools(server);
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(a);
+  const client = new Client({ name: 'c', version: '0' }); await client.connect(b);
+  const { prompts } = await client.listPrompts();
+  assert.deepEqual(prompts.map((p) => p.name).sort(), ['morning-prep', 'newsletter-draft', 'show-prep', 'weekly-prep']);
+  const r = await client.getPrompt({ name: 'show-prep', arguments: { show: 'Ladies First' } });
+  assert.match((r.messages[0].content as any).text, /show="Ladies First"/);
+  await client.close(); await server.close();
+});

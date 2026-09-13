@@ -52,8 +52,8 @@ Any MCP client, as JSON:
 
 | Tool | Give it | Get back |
 |---|---|---|
-| `find_stories` | words, a station, a show or podcast, a topic, a date window; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio, collection names, rights note when premium or another station's |
-| `read_story` | a story url or CDS id | paragraphs in reading order, or the transcript, or a note that CDS has only teaser and audio |
+| `find_stories` | words, a station, a show or podcast, a topic, a date window; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio, image (wide crop, resize template, credit), byline, collection names, rights note when premium or another station's |
+| `read_story` | a story url or CDS id | paragraphs in reading order, or the transcript, or a note that CDS has only teaser and audio; plus image and byline |
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
 | `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, marked new or updated |
@@ -61,13 +61,13 @@ Any MCP client, as JSON:
 | `search_archive` | words, a station, from and to dates | the archive in half-year windows, newest first |
 | `coverage_scan` | a topic and a window | what NPR and the network published, by station |
 | `coverage_gap` | a topic and a window | NPR's stories next to ours, marked localized or not |
-| `find_station` | a name, call letters, or city | station id |
+| `find_station` | a name, call letters, or city | station id, with city, state, band and music-only when the finder knows it |
 | `find_collection` | a topic, tag, show, or program name | collection id |
 
-Two saved prompts, `morning-prep` and `newsletter-draft`, chain the tools into workflows. Plus one generated tool per CDS endpoint (`queryDocuments`, `getDocument`, …) for the full document when you need it.
+Four saved prompts chain the tools into workflows: `morning-prep`, `weekly-prep` (the week in review, what the network covered that we did not, the week ahead), `show-prep` (one show's episodes, the network on its beat, three questions for the host), and `newsletter-draft`. Plus one generated tool per CDS endpoint (`queryDocuments`, `getDocument`, …) for the full document when you need it.
 
 ## Limits
 
-CDS has no text search; word matching covers titles and teasers of the newest 300 to 1,800 stories per question, scoped to NPR unless you name a station. Names are learned as they pass through and cached under `~/.cache/npr-cds/`. Audio is always a link, never a download. Content from other stations may be displayed with attribution and refreshed, not stored.
+CDS has no text search; word matching covers titles and teasers of the newest 300 to 1,800 stories per question, scoped to your home station and NPR unless you name a station. Names are learned as they pass through and cached under `~/.cache/npr-cds/`. Audio is always a link, never a download. Content from other stations may be displayed with attribution and refreshed, not stored.
 
 MIT.

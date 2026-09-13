@@ -1,11 +1,11 @@
 // read_story: the text of one story in reading order, or its transcript, or an honest "not in CDS".
 import { stripHtml, toHit, type Hit } from './compact';
-import { rightsFor, type FindDeps } from './find';
+import { resolveBylines, rightsFor, type FindDeps } from './find';
 import { resolveDoc } from './producer';
 
 export type ReaderDeps = FindDeps & { cdsGet: (id: string) => Promise<{ resources: any[] }> };
 export type StoryText = {
-  id: string; title: string; date: string; url?: string; audio?: Hit['audio']; rights?: string;
+  id: string; title: string; date: string; url?: string; audio?: Hit['audio']; image?: Hit['image']; byline?: string; rights?: string;
   source: 'body' | 'transcript' | 'none'; paragraphs: string[]; words: number; note?: string; searched: string;
 };
 
@@ -36,6 +36,7 @@ export async function readStory(args: { id?: string; url?: string; station?: str
   const { doc, searched } = await resolveDoc(args, deps);
   if (!doc) throw new Error(`Not in CDS (looked at ${searched}).`);
   const hit = toHit(doc);
+  await resolveBylines([hit], deps);
   let paragraphs = bodyParagraphs(doc);
   let source: StoryText['source'] = paragraphs.length ? 'body' : 'none';
   if (!paragraphs.length) { paragraphs = await transcriptParagraphs(doc, deps); if (paragraphs.length) source = 'transcript'; }
@@ -55,7 +56,7 @@ export async function readStory(args: { id?: string; url?: string; station?: str
   if (cut) note = `Truncated to ${countWords(kept)} of ${words} words (maxChars ${max}). Raise maxChars for the rest.`;
 
   return {
-    id: doc.id, title: doc.title, date: hit.date, url: hit.url, audio: hit.audio, rights: rightsFor(hit, deps.homeStation),
+    id: doc.id, title: doc.title, date: hit.date, url: hit.url, audio: hit.audio, ...(hit.image ? { image: hit.image } : {}), ...(hit.byline ? { byline: hit.byline } : {}), rights: rightsFor(hit, deps.homeStation),
     source, paragraphs: kept, words, ...(note ? { note } : {}), searched,
   };
 }

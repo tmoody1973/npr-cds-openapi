@@ -15,6 +15,7 @@ export type FindDeps = {
     findCollection: (q: string, opts?: { types?: string[]; notTypes?: string[] }) => Promise<Collection[]>;
     learnFromDocs: (docs: any[]) => Promise<Map<string, Collection>>;
     stations?: () => Promise<Station[]>;
+    resolveCollections?: (ids: string[]) => Promise<Map<string, Collection>>; // person documents resolve here too
   };
   homeStation?: string; // service id whose content we may store; everything else is display-only
 };
@@ -28,6 +29,22 @@ export const DISPLAY_ONLY = 'display-only: attribute via url, refresh regularly,
 export function rightsFor(hit: Hit, homeStation?: string): string | undefined {
   const notes = [hit.premium ? PREMIUM_NOTE : '', homeStation && hit.owner !== homeStation ? DISPLAY_ONLY : ''].filter(Boolean);
   return notes.length ? notes.join('; ') : undefined;
+}
+
+// A byline asset often carries only a person-document id; the document's title is the name.
+// A byline is decoration: a failed lookup leaves it out and never fails the search.
+export async function resolveBylines(hits: Hit[], deps: FindDeps): Promise<void> {
+  const ids = [...new Set(hits.flatMap((h) => h.bylineIds ?? []))];
+  if (ids.length && deps.catalog.resolveCollections) {
+    try {
+      const people = await deps.catalog.resolveCollections(ids);
+      for (const h of hits) {
+        const names = (h.bylineIds ?? []).map((id) => people.get(id)?.title).filter(Boolean);
+        if (names.length) h.byline = names.join(', ');
+      }
+    } catch { /* see above */ }
+  }
+  for (const h of hits) delete h.bylineIds;
 }
 
 export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ searched: string; hits: FoundHit[]; scanned: number; station?: Station }> {
@@ -80,21 +97,32 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
   const scanKeyword = async (): Promise<any[]> => {
     if (!query) return [];
     const found: any[] = [];
-    let scanned = 0;
-    // All of CDS at 300 per page is only hours of network output; scope the scan to NPR unless a station was named.
-    const scope = new URLSearchParams(base);
-    if (!scope.has('ownerHrefs')) scope.set('ownerHrefs', ORG + NPR_SERVICE_ID);
-    for (let page = 0; page < scanPages; page++) {
-      const p = new URLSearchParams(scope); p.set('offset', String(page * PAGE));
-      const { resources = [] } = await deps.cdsQuery(p);
-      scanned += resources.length;
-      found.push(...resources.filter((d) => matches(toHit(d), query)));
-      if (resources.length < PAGE) break;
+    // All of CDS at 300 per page is only hours of network output, so the scan is scoped: the named station,
+    // or else the home station first (local stories would otherwise never surface) and then NPR.
+    const scopes: Array<{ owner: string; label: string }> = station
+      ? [{ owner: base.get('ownerHrefs')!, label: '' }]
+      : [...(deps.homeStation ? [{ owner: ORG + deps.homeStation, label: `${await homeName()} ` }] : []), { owner: ORG + NPR_SERVICE_ID, label: 'NPR ' }];
+    const parts: string[] = [];
+    for (const { owner, label } of scopes) {
+      let scanned = 0;
+      const scope = new URLSearchParams(base); scope.set('ownerHrefs', owner);
+      for (let page = 0; page < scanPages; page++) {
+        const p = new URLSearchParams(scope); p.set('offset', String(page * PAGE));
+        const { resources = [] } = await deps.cdsQuery(p);
+        scanned += resources.length;
+        found.push(...resources.filter((d) => matches(toHit(d), query)));
+        if (resources.length < PAGE) break;
+      }
+      parts.push(`${scanned} newest ${label}${noun}`);
+      scannedTotal += scanned;
     }
-    searched.push(`keyword "${query}" over ${scanned} newest ${station ? '' : 'NPR '}${noun}`);
-    scannedTotal = scanned;
+    searched.push(`keyword "${query}" over ${parts.join(' and ')}`);
     return found;
   };
+  async function homeName(): Promise<string> {
+    const s = (await deps.catalog.stations?.())?.find((x) => x.id === deps.homeStation);
+    return s?.name ?? deps.homeStation!;
+  }
   const fetchByCollection = async (): Promise<any[]> => {
     if (!collections.length) return [];
     const p = new URLSearchParams(base); p.set('collectionIds', collections.map((c) => c.id).join(','));
@@ -110,6 +138,7 @@ export async function findStories(args: FindArgs, deps: FindDeps): Promise<{ sea
 
   const hits: FoundHit[] = docs.map(toHit);
   const names = await deps.catalog.learnFromDocs(docs);
+  await resolveBylines(hits, deps);
   for (const h of hits) {
     for (const c of h.collections) { const n = names.get(c.id); if (n) c.name = n.title; }
     const rights = rightsFor(h, deps.homeStation);
