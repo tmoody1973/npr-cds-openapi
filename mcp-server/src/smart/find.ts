@@ -16,6 +16,7 @@ export type FindDeps = {
     learnFromDocs: (docs: any[]) => Promise<Map<string, Collection>>;
     stations?: () => Promise<Station[]>;
     resolveCollections?: (ids: string[]) => Promise<Map<string, Collection>>; // person documents resolve here too
+    enrichStation?: (id: string) => Promise<Station>; // finder lookup for city and state, cached by the catalog
   };
   homeStation?: string; // service id whose content we may store; everything else is display-only
 };
