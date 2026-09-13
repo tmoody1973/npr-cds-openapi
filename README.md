@@ -53,7 +53,7 @@ Verified 2026-09-12 against CDS production. The pagination caps, sort grammar, d
 
 ## MCP server: ask CDS questions in plain words
 
-`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.8.0). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
+`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.8.1). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
 
 ### For radio professionals
 
@@ -108,7 +108,7 @@ With a station set, anything from another station comes back marked *display-onl
 | Tool | Give it | Get back |
 |---|---|---|
 | `find_stories` | words, a station, a show or podcast, a topic, a date window, any mix; `kind: podcasts` for episodes | compact hits newest first: title, teaser, date, link, audio length and stream link, image, byline, collection names, and a rights note when the audio is premium or belongs to another station |
-| `read_story` | a story url or CDS id | the story's paragraphs in reading order, or its transcript, or a plain note that CDS holds only the teaser and audio, with image and byline |
+| `read_story` | a story url or CDS id | the story's paragraphs in reading order, or its transcript, or a plain note that CDS holds only the teaser and audio, with image, byline, owner, teaser, and premium flag |
 | `check_story` | a story url or CDS id | in CDS or not, labels by name, audio, image, teaser, problems in plain language |
 | `station_labels` | a station name | shows, podcasts, programs, topics, tags, categories it uses, with counts |
 | `whats_new_since` | a date or time, optionally a station | what was published or edited since, each marked new or updated |
@@ -171,7 +171,7 @@ If any of these misbehave, open an issue with the prompt and the answer. The `se
 
 **How it works, in order.** You ask for "Ladies First". The server looks the name up in a catalog it keeps (a lookup table, a list of names and ids it has seen before). If the name is missing, it reads your station's newest stories, notes which collections they point to, resolves the ones CDS will serve and infers the rest from the story urls, and remembers them for next time. It then asks CDS for that collection's stories, newest first. Before anything reaches the assistant it trims each 17 KB document down to the dozen fields a person needs, about 100 bytes. For a words question it also scans the newest 300 stories' titles and teasers itself and merges the two lists, so the assistant reads ten good hits instead of three hundred raw ones.
 
-**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`. 0.5.1: show names resolve by kind. 0.6.0: `read_story`, and the saved prompts compute real timestamps. 0.7.0: `search_archive`, `coverage_scan`, `coverage_gap`. 0.7.1: `find_station` and `find_collection` results accepted by strict MCP clients; server instructions name the home station. 0.8.0: image and byline on every hit and in `read_story`; city, state and format on stations; word search reads the home station and NPR; `weekly-prep` and `show-prep` prompts; `newsletter-draft` names the home station.
+**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`. 0.5.1: show names resolve by kind. 0.6.0: `read_story`, and the saved prompts compute real timestamps. 0.7.0: `search_archive`, `coverage_scan`, `coverage_gap`. 0.7.1: `find_station` and `find_collection` results accepted by strict MCP clients; server instructions name the home station. 0.8.0: image and byline on every hit and in `read_story`; city, state and format on stations; word search reads the home station and NPR; `weekly-prep` and `show-prep` prompts; `newsletter-draft` names the home station. 0.8.1: `read_story` also returns `owner`, `teaser`, and `premium`.
 
 **Podcasts.** Ask with `kind: podcasts`, or just say "podcast" and the assistant will. Episodes come back like stories, with the show name resolved from the podcast channel. NPR's podcast episodes all carry the premium flag, so each one says play or link, never store; a station's own podcasts usually don't. Newscasts are excluded from podcast searches and have their own tool.
 

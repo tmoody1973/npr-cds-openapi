@@ -89,3 +89,19 @@ test('read_story returns the primary image and the byline', async () => {
   assert.deepEqual(r.image, { href: 'https://cdn/wide.jpg', template: 'https://cdn/w/{width}', credit: 'Courtesy of the artist' });
   assert.equal(r.byline, 'Tarik Moody');
 });
+
+test('read_story returns owner and teaser, and premium only for premium documents', async () => {
+  const own = await readStory({ id: 'g-s921-16132' }, deps([story()]));
+  assert.equal(own.owner, 's921');
+  assert.equal(own.teaser, 'Change is hard.');
+  assert.equal(own.premium, undefined);
+
+  const upFirst = story({
+    id: 'nx-s1-3', owners: [{ href: 'https://organization.api.npr.org/v4/services/s1' }],
+    profiles: [{ href: '/v1/profiles/has-premium-audio' }], teaser: undefined,
+  });
+  const premium = await readStory({ id: 'nx-s1-3' }, deps([upFirst]));
+  assert.equal(premium.owner, 's1');
+  assert.equal(premium.premium, true);
+  assert.equal('teaser' in premium, false);
+});
