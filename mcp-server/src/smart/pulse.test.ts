@@ -94,6 +94,44 @@ test('with no depth argument, the default of 6 pages the story scan to six offse
   assert.equal(r.capped, true);
 });
 
+test('episode scan pages to depth, like the story scan', async () => {
+  const many = Array.from({ length: 700 }, (_, i) => doc(`e${i}`, 's1', '2026-09-12'));
+  const d = deps([], many);
+  await networkPulse({ since: '2026-09-06', depth: 2 }, d);
+  assert.deepEqual(
+    d.queries.filter((q) => q.get('profileIds') === 'podcast-episode').map((q) => q.get('offset')),
+    ['0', '300'],
+  );
+});
+
+test('episodes capped, stories not: coveredFrom comes from the episode window, and an older story is trimmed out', async () => {
+  const episodeDate = (i: number) => `2026-09-${String(12 - Math.floor(i / 100)).padStart(2, '0')}`;
+  const episodes = Array.from({ length: 301 }, (_, i) => doc(`e${i}`, 's1', episodeDate(i)));
+  const stories = [doc('old', 's-old', '2026-09-05'), doc('a', 's1', '2026-09-12')];
+  const d = deps(stories, episodes);
+  const r = await networkPulse({ since: '2026-09-01', depth: 1 }, d);
+  assert.equal(r.scanned.episodes, 300, 'depth 1 reads exactly one 300-page');
+  assert.equal(r.capped, true);
+  assert.equal(r.coveredFrom, '2026-09-10', "the episode scan's oldest SCANNED date, since stories were not capped");
+  assert.equal(r.stations.find((s) => s.id === 's-old'), undefined, 'a story older than coveredFrom is trimmed from its station tally');
+  assert.deepEqual(r.stations.map((s) => s.id), ['s1']);
+});
+
+test('both scans capped: coveredFrom is the later of the two oldest dates, and a story between them is trimmed', async () => {
+  const storyDate = (i: number) => `2026-09-${String(12 - Math.floor(i / 100)).padStart(2, '0')}`;
+  const episodeDate = (i: number) => `2026-09-${String(14 - Math.floor(i / 100)).padStart(2, '0')}`;
+  const stories = [
+    doc('mid', 's-mid', '2026-09-08'),
+    ...Array.from({ length: 599 }, (_, i) => doc(`s${i}`, 's1', storyDate(i))),
+  ];
+  const episodes = Array.from({ length: 600 }, (_, i) => doc(`e${i}`, 's1', episodeDate(i)));
+  const d = deps(stories, episodes);
+  const r = await networkPulse({ since: '2026-09-01', depth: 2 }, d);
+  assert.equal(r.capped, true);
+  assert.equal(r.coveredFrom, '2026-09-09', 'the later (more recent) of the stories oldest (09-07) and episodes oldest (09-09)');
+  assert.equal(r.stations.find((s) => s.id === 's-mid'), undefined, 'the 09-08 story falls before coveredFrom and is trimmed');
+});
+
 test('since defaults to seven days ago and limit caps shows and topics', async () => {
   const shows = Array.from({ length: 5 }, (_, i) => [`c-show`, 'series'] as [string, string]);
   const d = deps([doc('a', 's1', '2026-09-12', shows), doc('b', 's1', '2026-09-12', [['c-atc', 'program']]), doc('c', 's1', '2026-09-12', [['c-housing', 'topic']])]);

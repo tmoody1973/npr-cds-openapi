@@ -198,11 +198,11 @@ export function registerSmartTools(server: McpServer) {
   server.registerTool(
     'network_pulse',
     {
-      description: 'The network\'s week in counts: which stations published, which shows and podcasts had new episodes, which topics ran, from one paged scan of the newest stories across every owner. Ids, names, counts, and last dates only, never text. For building an overview or an index; use find_stories to see the stories themselves.',
+      description: 'The network\'s week in counts: which stations published, which shows and podcasts had new episodes, which topics ran, from paged scans of the newest stories and podcast episodes across every owner. Ids, names, counts, and last dates only, never text. For building an overview or an index; use find_stories to see the stories themselves.',
       inputSchema: {
         since: z.string().optional().describe('YYYY-MM-DD. Default seven days ago.'),
         until: z.string().optional().describe('YYYY-MM-DD'),
-        depth: z.number().int().min(1).max(6).optional().describe('Pages of 300 newest stories to scan. Default 6.'),
+        depth: z.number().int().min(1).max(6).optional().describe('Pages of 300 newest stories, and of podcast episodes, to scan. Default 6.'),
         limit: z.number().int().min(1).max(200).optional().describe('Shows and topics to return, most active first. Default 60. Stations are never cut.'),
       },
       annotations: { readOnlyHint: true },

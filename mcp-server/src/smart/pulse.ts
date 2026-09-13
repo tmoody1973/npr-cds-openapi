@@ -56,19 +56,33 @@ export async function networkPulse(args: PulseArgs, deps: FindDeps): Promise<Pul
   const until = args.until;
   const depth = Math.min(Math.max(args.depth ?? 6, 1), 6);
   const limit = args.limit ?? 60;
-  // Podcast episodes are one page: they count toward shows, never toward a station's story count.
-  const [stories, episodes] = await Promise.all([scan(deps, 'story', depth, since, until), scan(deps, 'podcast-episode', 1, since, until)]);
+  // Podcast episodes are scanned to the same depth as stories: they count toward shows and topics
+  // only, never toward a station's story count.
+  const [stories, episodes] = await Promise.all([scan(deps, 'story', depth, since, until), scan(deps, 'podcast-episode', depth, since, until)]);
+
+  // Take the minimum over every scanned document, not the last page: CDS sorts each page by
+  // publishDateTime desc, but sort order is not guaranteed to hold across page boundaries, so the
+  // oldest date is not reliably in the last page fetched. Do not "simplify" this to that.
+  const oldestScanned = (docs: any[]) => docs.reduce((oldest, d) => { const date = String(d.publishDateTime ?? '').slice(0, 10); return !oldest || date < oldest ? date : oldest; }, '');
+  const capped = stories.capped || episodes.capped;
+  const storiesOldest = stories.capped ? oldestScanned(stories.docs) : undefined;
+  const episodesOldest = episodes.capped ? oldestScanned(episodes.docs) : undefined;
+  // When both scans are capped, only the later (more recent) of the two oldest dates is a window
+  // every tally can trust: a date older than that could be missing from whichever scan cut it off first.
+  const coveredFrom = capped
+    ? (storiesOldest && episodesOldest ? (storiesOldest > episodesOldest ? storiesOldest : episodesOldest) : (storiesOldest ?? episodesOldest))
+    : undefined;
 
   const stations: Tally = new Map(), shows: Tally = new Map(), topics: Tally = new Map();
   for (const d of stories.docs) {
     const owner = lastSegment(d.owners?.[0]?.href ?? ''), date = String(d.publishDateTime ?? '').slice(0, 10);
-    if (!owner || !date) continue;
+    if (!owner || !date || (coveredFrom && date < coveredFrom)) continue;
     bump(stations, owner, date);
     tallyCollections(d, date, owner, shows, topics);
   }
   for (const d of episodes.docs) {
     const owner = lastSegment(d.owners?.[0]?.href ?? ''), date = String(d.publishDateTime ?? '').slice(0, 10);
-    if (owner && date) tallyCollections(d, date, owner, shows, topics);
+    if (owner && date && !(coveredFrom && date < coveredFrom)) tallyCollections(d, date, owner, shows, topics);
   }
 
   const names = await deps.catalog.learnFromDocs([...stories.docs, ...episodes.docs]);
@@ -84,15 +98,8 @@ export async function networkPulse(args: PulseArgs, deps: FindDeps): Promise<Pul
   const showRows: PulseShow[] = [...shows].map(([id, t]) => ({ id, name: names.get(id)?.title ?? id, rel: t.rel as PulseShow['rel'], owner: t.owner ?? '', count: t.count, last: t.last }));
   const topicRows: PulseRow[] = [...topics].map(([id, t]) => ({ id, name: names.get(id)?.title ?? id, count: t.count, last: t.last }));
 
-  const capped = stories.capped;
-  // Take the minimum over every scanned story rather than trusting the last page: CDS sorts each
-  // page by publishDateTime desc, but sort order is not guaranteed to hold across page boundaries,
-  // so the oldest date is not reliably in the last page fetched. Do not "simplify" this to that.
-  const coveredFrom = capped
-    ? stories.docs.reduce((oldest, d) => { const date = String(d.publishDateTime ?? '').slice(0, 10); return !oldest || date < oldest ? date : oldest; }, '')
-    : undefined;
   return {
-    searched: `network stories since ${since}${until ? ` to ${until}` : ''}: ${stories.docs.length} newest stories${capped ? ` (the window holds more than that; counts cover ${coveredFrom} onward; raise depth)` : ''} and ${episodes.docs.length} newest podcast episodes, counted by station, show, and topic`,
+    searched: `network stories since ${since}${until ? ` to ${until}` : ''}: ${stories.docs.length} newest stories${capped ? ` (the window holds more than that; counts cover ${coveredFrom} onward, that day in part; raise depth)` : ''} and ${episodes.docs.length} newest podcast episodes, counted by station, show, and topic`,
     since, ...(until ? { until } : {}),
     scanned: { stories: stories.docs.length, episodes: episodes.docs.length }, capped, ...(coveredFrom ? { coveredFrom } : {}),
     stations: stationRows.sort(byCountThenName),
