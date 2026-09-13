@@ -48,7 +48,11 @@ export function registerSmartTools(server: McpServer) {
     'Look up an NPR network station by name, call letters, or city. Returns service ids for ownerHrefs (e.g. KCRW -> s55), with city, state, band and whether it is music-only when NPR\'s station finder knows it.',
     { query: z.string() },
     // Directory entries carry only id and name; the finder fills in the rest, once per station.
-    safe(async ({ query }) => Promise.all((await catalog.findStation(query)).map((s) => (s.city ? s : catalog.enrichStation(s.id))))),
+    safe(async ({ query }) => {
+      const out = [];
+      for (const s of await catalog.findStation(query)) out.push(s.city ? s : await catalog.enrichStation(s.id)); // sequential: each enrichment rewrites the cache file
+      return out;
+    }),
   );
 
   server.tool(

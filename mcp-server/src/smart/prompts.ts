@@ -44,10 +44,12 @@ Write it in the station's voice, for members:
 - End with one line inviting members to listen or read more.`;
 }
 
+// The station clause the prompts pass to the tools: the one asked for, else the configured home station.
+const stationClause = (station?: string, homeStation?: string) => { const ours = station ?? homeStation; return { ours, st: ours ? `, station="${ours}"` : '' }; };
+
 export function weeklyPrep(args: { since?: string; station?: string }, homeStation?: string): string {
   const since = args.since ?? daysAgo(7);
-  const ours = args.station ?? homeStation;
-  const st = ours ? `, station="${ours}"` : '';
+  const { ours, st } = stationClause(args.station, homeStation);
   return `You are preparing the weekly editorial prep for ${ours ? `the station "${ours}"` : 'the home station'}: the week in review, what the network covered that we did not, and the week ahead. Work in this order and do not skip steps.
 
 1. Call whats_new_since with since="${since}"${st}. These are our own stories from the week, new and updated.
@@ -65,8 +67,7 @@ Then write the prep so an editor can read it in five minutes:
 export function showPrep(args: { show: string; since?: string; station?: string }, homeStation?: string): string {
   if (!args.show) throw new Error('show-prep needs a show name.');
   const since = args.since ?? daysAgo(14);
-  const ours = args.station ?? homeStation;
-  const st = ours ? `, station="${ours}"` : '';
+  const { ours, st } = stationClause(args.station, homeStation);
   return `You are preparing a host for the next "${args.show}" on ${ours ? `the station "${ours}"` : 'the home station'}. Work in this order and do not skip steps.
 
 1. Call find_stories with show="${args.show}"${st}, limit=10. These are the show's recent episodes; note their guests and subjects.
