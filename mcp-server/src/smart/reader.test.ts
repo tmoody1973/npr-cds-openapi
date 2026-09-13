@@ -76,3 +76,16 @@ test('read_story keeps a cut of the first paragraph when it alone exceeds maxCha
   const r = await readStory({ id: 'g-s921-16132', maxChars: 500 }, deps([long]));
   assert.equal(r.paragraphs.length, 1); assert.ok(r.paragraphs[0].length <= 500); assert.match(r.note!, /truncated/i);
 });
+
+test('read_story returns the primary image and the byline', async () => {
+  const doc = story({
+    images: [{ href: '#/assets/img', rels: ['primary'] }],
+    bylines: [{ href: '#/assets/by' }],
+    assets: { ...story().assets,
+      img: { id: 'img', profiles: [{ href: '/v1/profiles/image', rels: ['type'] }], provider: 'Courtesy of the artist', enclosures: [{ rels: ['image-wide'], href: 'https://cdn/wide.jpg', hrefTemplate: 'https://cdn/w/{width}' }] },
+      by: { name: 'Tarik Moody' } },
+  });
+  const r = await readStory({ id: 'g-s921-16132' }, deps([doc]));
+  assert.deepEqual(r.image, { href: 'https://cdn/wide.jpg', template: 'https://cdn/w/{width}', credit: 'Courtesy of the artist' });
+  assert.equal(r.byline, 'Tarik Moody');
+});

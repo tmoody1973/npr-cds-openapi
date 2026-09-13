@@ -10,6 +10,9 @@ export type Hit = {
   url?: string; // canonical web page
   audio?: { seconds: number; href: string };
   premium?: true; // carries has-premium-audio: play or link, never store
+  image?: { href: string; template?: string; credit?: string; caption?: string }; // primary image, wide crop; template takes {width},{quality},{format}
+  byline?: string;
+  bylineIds?: string[]; // person documents to look up when the byline asset carries no name; stripped once resolved
   collections: Array<{ id: string; rel: string; name?: string }>;
 };
 
@@ -50,6 +53,22 @@ export function toHit(doc: Doc): Hit {
 
   const premium = (doc.profiles ?? []).some((p: Link) => p.href?.endsWith('/has-premium-audio'));
 
+  const asset = (l?: Link) => (l?.href ? doc.assets?.[l.href.replace('#/assets/', '')] : undefined);
+  const imageLinks: Link[] = doc.images ?? [];
+  const img = asset(imageLinks.find((l) => (l.rels ?? []).includes('primary')) ?? imageLinks[0]);
+  const crops: Array<Link & { hrefTemplate?: string }> = img?.enclosures ?? [];
+  const crop = crops.find((c) => (c.rels ?? []).includes('image-wide')) ?? crops[0];
+  const image = crop?.href ? {
+    href: crop.href,
+    ...(crop.hrefTemplate ? { template: crop.hrefTemplate } : {}),
+    ...(img.producer || img.provider ? { credit: img.producer || img.provider } : {}),
+    ...(img.caption ? { caption: img.caption } : {}),
+  } : undefined;
+
+  const by = ((doc.bylines ?? []) as Link[]).map(asset).filter(Boolean);
+  const names = by.map((b) => b.name).filter(Boolean);
+  const bylineIds = names.length ? [] : by.flatMap((b) => (b.bylineDocuments ?? []).map((l: Link) => lastSegment(l.href ?? ''))).filter(Boolean);
+
   return {
     id: doc.id,
     title: doc.title,
@@ -59,6 +78,9 @@ export function toHit(doc: Doc): Hit {
     ...(canonical ? { url: canonical } : {}),
     ...(audioHref ? { audio: { seconds: Number(audioAsset.duration ?? 0), href: audioHref } } : {}),
     ...(premium ? { premium: true as const } : {}),
+    ...(image ? { image } : {}),
+    ...(names.length ? { byline: names.join(', ') } : {}),
+    ...(bylineIds.length ? { bylineIds } : {}),
     collections,
   };
 }

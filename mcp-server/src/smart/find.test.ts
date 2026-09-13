@@ -161,3 +161,18 @@ test('a podcast show miss also learns from NPR\'s newest podcast episodes, not o
   await findStories({ show: 'Up First', kind: 'podcasts' }, d).catch(() => {});
   assert.ok(scanned.some((o) => o.endsWith('/s921')) && scanned.some((o) => o.endsWith('/s1')), `scanned ${scanned.join(', ')}`);
 });
+
+test('a hit whose byline asset has no name gets it from the person document through the catalog, and a failed lookup leaves no byline', async () => {
+  const d = deps();
+  const withBy = (id: string, name: string | null) => ({ ...story(id, 'Nameless byline', '2026-09-10', 's921'),
+    bylines: [{ href: '#/assets/b' }], assets: { b: { name, bylineDocuments: [{ href: '/v1/documents/1192772937', rels: ['biography'] }] } } });
+  d.cdsQuery = async () => ({ resources: [withBy('n1', null)] });
+  d.catalog.resolveCollections = async (ids: string[]) => new Map(ids.map((id) => [id, { id, title: 'Danielle Ponder', type: 'biography' }]));
+  const r = await findStories({ station: 'Radio Milwaukee' }, d);
+  assert.equal(r.hits[0].byline, 'Danielle Ponder');
+  assert.equal('bylineIds' in r.hits[0], false);
+  d.catalog.resolveCollections = async () => { throw new Error('CDS down'); };
+  const r2 = await findStories({ station: 'Radio Milwaukee' }, d);
+  assert.equal('byline' in r2.hits[0], false);
+  assert.equal('bylineIds' in r2.hits[0], false);
+});

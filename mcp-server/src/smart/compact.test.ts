@@ -109,3 +109,42 @@ test('toHit drops script and style contents, not just their tags', () => {
   const h = toHit({ ...doc, teaser: 'Real <script>alert(1)</script>text <style>p{}</style>here' });
   assert.equal(h.teaser, 'Real text here');
 });
+
+// Image and byline shapes trimmed from real documents (g-s921-16132 and an NPR story with a bare image link).
+const withImage = {
+  ...doc,
+  images: [{ href: '#/assets/img2', rels: ['promo-image-wide'] }, { href: '#/assets/img1', rels: ['primary', 'promo-image-wide'] }],
+  bylines: [{ href: '#/assets/by1' }],
+  assets: {
+    ...doc.assets,
+    img1: { title: 'Danielle Ponder', caption: 'Ponder on stage.', producer: null, provider: 'Courtesy of the artist',
+      enclosures: [
+        { rels: ['image-square', 'scalable'], href: 'https://cdn/sq.jpg', hrefTemplate: 'https://cdn/sq/{width}/{quality}/{format}', width: 1000, height: 1000 },
+        { rels: ['image-wide', 'scalable'], href: 'https://cdn/wide.jpg', hrefTemplate: 'https://cdn/wide/{width}/{quality}/{format}', width: 2160, height: 1215 },
+      ] },
+    img2: { title: 'other', enclosures: [{ rels: ['image-wide'], href: 'https://cdn/other.jpg' }] },
+    by1: { name: 'Tarik Moody', bylineDocuments: [{ href: '/v1/documents/1192772937', rels: ['biography'] }] },
+  },
+};
+
+test('toHit carries the primary image: wide crop href, resize template, credit from producer or provider, caption', () => {
+  const h = toHit(withImage);
+  assert.deepEqual(h.image, { href: 'https://cdn/wide.jpg', template: 'https://cdn/wide/{width}/{quality}/{format}', credit: 'Courtesy of the artist', caption: 'Ponder on stage.' });
+});
+
+test('toHit prefers the producer as credit and falls back to the first image when none is primary', () => {
+  const producer = { ...withImage, images: [{ href: '#/assets/img1' }], assets: { ...withImage.assets, img1: { ...withImage.assets.img1, producer: 'Jackie Lay/NPR' } } };
+  assert.equal(toHit(producer).image?.credit, 'Jackie Lay/NPR');
+});
+
+test('toHit has no image field when the document has none', () => {
+  assert.equal('image' in toHit(doc), false);
+});
+
+test('toHit carries the byline name from the byline asset and the person ids for lookup when the name is missing', () => {
+  assert.equal(toHit(withImage).byline, 'Tarik Moody');
+  const nameless = { ...withImage, assets: { ...withImage.assets, by1: { name: null, bylineDocuments: [{ href: '/v1/documents/1192772937', rels: ['biography'] }] } } };
+  const h = toHit(nameless);
+  assert.equal('byline' in h, false);
+  assert.deepEqual(h.bylineIds, ['1192772937']);
+});
