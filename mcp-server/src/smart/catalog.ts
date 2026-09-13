@@ -3,7 +3,7 @@ import path from 'node:path';
 import MiniSearch from 'minisearch';
 import { CDS, NPR_SERVICE_ID } from './cds';
 
-export type Station = { id: string; name: string; call?: string; city?: string };
+export type Station = { id: string; name: string; call?: string; city?: string; state?: string; band?: string; musicOnly?: boolean };
 export type Collection = { id: string; title: string; type: string };
 export type FetchJson = (url: string, opts?: { auth?: boolean }) => Promise<any>;
 
@@ -66,11 +66,34 @@ export class Catalog {
     const hits = this.stationIndex.search(query).slice(0, 5).map((r) => ({ id: r.id, name: r.name }));
     if (hits.length) return hits;
     // City or market names live only in the station finder.
-    const finder = await this.fetchJson(`https://station.api.npr.org/v3/stations?q=${encodeURIComponent(query)}`);
-    return (finder.items ?? []).slice(0, 5).map((s: any) => {
-      const a = s.attributes ?? {};
-      return { id: a.serviceId, name: a.brand?.name ?? a.network?.name ?? a.serviceId, call: a.brand?.call, city: a.brand?.marketCity };
+    return (await this.finder(query)).slice(0, 5);
+  }
+
+  // The finder is the only source of city, state and format, and it has no list-all: it answers a
+  // name or city query with a few matches. Looked up on demand and remembered in the directory file.
+  private async finder(query: string): Promise<Station[]> {
+    const res = await this.fetchJson(`https://station.api.npr.org/v3/stations?q=${encodeURIComponent(query)}`);
+    return (res?.items ?? []).map((s: any) => {
+      const a = s.attributes ?? {}; const b = a.brand ?? {};
+      const st: Station = { id: a.serviceId, name: b.name ?? a.network?.name ?? a.serviceId };
+      if (b.call) st.call = b.call; if (b.marketCity) st.city = b.marketCity; if (b.marketState) st.state = b.marketState;
+      if (b.band) st.band = b.band; if (typeof a.eligibility?.musicOnly === 'boolean') st.musicOnly = a.eligibility.musicOnly;
+      return st;
     });
+  }
+  private enrichTried = new Set<string>();
+  async enrichStation(id: string): Promise<Station> {
+    const dir = await this.stationDirectory();
+    const item = dir.items.find((s) => s.id === id) ?? { id, name: id };
+    if (item.state !== undefined || this.enrichTried.has(id)) return item;
+    this.enrichTried.add(id);
+    const match = (await this.finder(item.name)).find((s) => s.id === id);
+    if (!match) return item;
+    const enriched = { ...item, ...match, name: item.name };
+    this.stationState = { ...dir, items: dir.items.map((s) => (s.id === id ? enriched : s)) };
+    this.save('stations.json', this.stationState);
+    this.stationIndex = undefined;
+    return enriched;
   }
 
   private collections(): CollectionState {
