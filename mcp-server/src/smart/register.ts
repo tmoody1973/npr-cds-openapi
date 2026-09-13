@@ -8,7 +8,7 @@ import { readStory } from './reader';
 import { coverageGap, coverageScan, searchArchive } from './coverage';
 import { findStories } from './find';
 import { checkStory, latestNewscast, stationLabels, whatsNewSince } from './producer';
-import { morningPrep, newsletterDraft } from './prompts';
+import { morningPrep, newsletterDraft, weeklyPrep, showPrep } from './prompts';
 import { readHomeStation } from './config';
 
 const cacheDir = path.join(process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache'), 'npr-cds');
@@ -123,7 +123,23 @@ export function registerSmartTools(server: McpServer) {
       description: 'Newsletter section from our stories and NPR\'s, every item linking back to its source, with audio links.',
       argsSchema: { topic: z.string().optional(), since: z.string().optional().describe('Default the last 7 days.'), station: z.string().optional() },
     },
-    (args) => prompt(newsletterDraft(args)),
+    (args) => prompt(newsletterDraft(args, deps.homeStation)),
+  );
+  server.registerPrompt(
+    'weekly-prep',
+    {
+      description: 'Weekly editorial prep: our week in review, what the network covered that we did not (coverage_gap on our top subjects), and NPR\'s week and newest podcasts for planning ahead.',
+      argsSchema: { since: z.string().optional().describe('YYYY-MM-DD. Default seven days ago.'), station: z.string().optional() },
+    },
+    (args) => prompt(weeklyPrep(args, deps.homeStation)),
+  );
+  server.registerPrompt(
+    'show-prep',
+    {
+      description: 'Prep for one show: its recent episodes, what the network and NPR said on its beat, and three questions for the host. Every item links to its source.',
+      argsSchema: { show: z.string().describe('Show name, e.g. "Ladies First".'), since: z.string().optional().describe('YYYY-MM-DD. Default fourteen days ago.'), station: z.string().optional() },
+    },
+    (args) => prompt(showPrep(args, deps.homeStation)),
   );
 
   server.registerTool(

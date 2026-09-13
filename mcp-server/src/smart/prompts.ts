@@ -27,12 +27,14 @@ Then write the rundown so a host can read out loud:
 - Never invent a story or a quote. Everything comes from the tool results. If a step returns nothing, say so in the rundown.`;
 }
 
-export function newsletterDraft(args: { topic?: string; since?: string; station?: string }): string {
+// homeStation is the configured station id; naming it in step 1 keeps a word search from reading NPR as "ours".
+export function newsletterDraft(args: { topic?: string; since?: string; station?: string }, homeStation?: string): string {
   const topic = args.topic ? ` about "${args.topic}"` : '';
   const since = args.since ?? daysAgo(7);
-  return `Draft a station newsletter section${topic} for ${args.station ? `"${args.station}"` : 'the home station'}, covering everything since ${since}.
+  const ours = args.station ?? homeStation;
+  return `Draft a station newsletter section${topic} for ${ours ? `"${ours}"` : 'the home station'}, covering everything since ${since}.
 
-1. Call find_stories with ${args.topic ? `query="${args.topic}", ` : ''}since="${since}"${args.station ? `, station="${args.station}"` : ''}, limit=10. These are our own stories.
+1. Call find_stories with ${args.topic ? `query="${args.topic}", ` : ''}since="${since}"${ours ? `, station="${ours}"` : ''}, limit=10. These are our own stories.
 2. Call find_stories with the same words and window but station="NPR", limit=10. These are NPR's.
 
 Write it in the station's voice, for members:
@@ -40,4 +42,41 @@ Write it in the station's voice, for members:
 - Follow with up to three NPR stories, one sentence each, each with "via NPR" and the canonical link back to npr.org.
 - Every item must link back to its source. Do not store, copy, or quote at length any NPR or other station's text; a one-sentence summary and the link is the whole use.
 - End with one line inviting members to listen or read more.`;
+}
+
+export function weeklyPrep(args: { since?: string; station?: string }, homeStation?: string): string {
+  const since = args.since ?? daysAgo(7);
+  const ours = args.station ?? homeStation;
+  const st = ours ? `, station="${ours}"` : '';
+  return `You are preparing the weekly editorial prep for ${ours ? `the station "${ours}"` : 'the home station'}: the week in review, what the network covered that we did not, and the week ahead. Work in this order and do not skip steps.
+
+1. Call whats_new_since with since="${since}"${st}. These are our own stories from the week, new and updated.
+2. Pick the two subjects that come up most in step 1. For each, call coverage_gap with topic=<subject>, since="${since}". This shows NPR's stories on that subject and whether we localized them.
+3. Call find_stories with station="NPR", since="${since}", limit=20. This is NPR's week.
+4. Call find_stories with station="NPR", kind="podcasts", since="${since}", limit=10. These are the newest NPR podcast episodes, for planning.
+
+Then write the prep so an editor can read it in five minutes:
+- THE WEEK IN REVIEW: our stories grouped by subject, each as a headline, one sentence, the canonical link, and the audio length if there is audio.
+- WHAT WE MISSED: from step 2, the NPR stories not marked localized, each with one sentence on the local angle and its canonical link.
+- WEEK AHEAD: from steps 3 and 4, three NPR stories or episodes worth planning a local angle on this coming week, each with its canonical link.
+- Never invent a story or a quote. Everything comes from the tool results. If a step returns nothing, say so.`;
+}
+
+export function showPrep(args: { show: string; since?: string; station?: string }, homeStation?: string): string {
+  if (!args.show) throw new Error('show-prep needs a show name.');
+  const since = args.since ?? daysAgo(14);
+  const ours = args.station ?? homeStation;
+  const st = ours ? `, station="${ours}"` : '';
+  return `You are preparing a host for the next "${args.show}" on ${ours ? `the station "${ours}"` : 'the home station'}. Work in this order and do not skip steps.
+
+1. Call find_stories with show="${args.show}"${st}, limit=10. These are the show's recent episodes; note their guests and subjects.
+2. Pick the subject or guest that appears most in step 1. Call coverage_scan with topic=<that>, since="${since}". This is what NPR and the network said about it.
+3. Call find_stories with station="NPR", query=<the same words>, since="${since}", limit=10. NPR's own stories on it.
+
+Then write the prep so the host can scan it before air:
+- LAST TIME ON THE SHOW: the three newest episodes, each as a headline, one sentence, the canonical link, and the audio link if there is audio.
+- THE NETWORK ON OUR BEAT: from step 2, up to five stories grouped by station, one sentence each, each with the canonical link and "(station name)".
+- FROM NPR: up to three from step 3, one sentence each, each ending "(NPR, link)" with the canonical link.
+- THREE QUESTIONS: three questions the host could ask next episode, each grounded in one of the stories above.
+- Never invent a story, a guest, or a quote. Everything comes from the tool results. If a step returns nothing, say so.`;
 }
