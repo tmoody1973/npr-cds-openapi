@@ -59,7 +59,7 @@ export function weeklyPrep(args: { since?: string; station?: string }, homeStati
   return `You are preparing the weekly editorial prep for ${ours ? `the station "${ours}"` : 'the home station'}: the week in review, what the network covered that we did not, and the week ahead. Work in this order and do not skip steps.
 
 1. Call whats_new_since with since="${since}"${st}. These are our own stories from the week; each is marked new or updated.
-2. From step 1, take only the stories marked new and pick the two show or collection names that appear most among them. For each, call coverage_gap with topic=<that name>, since="${since}". This shows NPR's stories on that subject and whether we localized them.
+2. From step 1, take only the stories marked new and pick the two subjects that come up most in their titles and teasers: an artist, a genre, a place, or an event, in one to three words. Do not use show or series names. For each, call coverage_gap with topic=<those words>, since="${since}". This shows NPR's stories on that subject and whether we localized them.
 3. Call find_stories with station="NPR", since="${since}", limit=20. This is NPR's week.
 4. Call find_stories with station="NPR", kind="podcasts", since="${since}", limit=10. These are the newest NPR podcast episodes, for planning.
 

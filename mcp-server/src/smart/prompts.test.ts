@@ -73,11 +73,12 @@ test('every prep keeps tool talk and rights paragraphs off the page and never bu
   }
 });
 
-test('weekly-prep lists only new stories, collapses updated ones into a count, and picks show or collection names', () => {
+test('weekly-prep lists only new stories, collapses updated ones into a count, and picks short subjects, not show names', () => {
   const t = weeklyPrep({}, 's921');
   assert.match(t, /only the stories marked new/i);
   assert.match(t, /older stories were updated; nothing new in them/i);
-  assert.match(t, /two show or collection names/i);
+  assert.match(t, /two subjects that come up most in their titles and teasers: an artist, a genre, a place, or an event, in one to three words/i);
+  assert.match(t, /Do not use show or series names\./);
   assert.match(t, /returned no NPR stories, say so in one line/i);
 });
 
