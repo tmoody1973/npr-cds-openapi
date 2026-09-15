@@ -53,18 +53,23 @@ Verified 2026-09-12 against CDS production. The pagination caps, sort grammar, d
 
 ## MCP server: ask CDS questions in plain words
 
-`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.8.2). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
+`mcp-server/` is published to npm as **`npr-cds-mcp`** (current version 0.8.3). It is an MCP server, a small program that lets an AI assistant such as Claude use CDS as a tool. You type a question in plain English; the assistant picks a tool, the tool talks to CDS, and the answer comes back as a list a producer can read out loud.
 
 ### For radio professionals
 
 **What you get.** An assistant that knows what's in CDS, yours and every other station's, and can answer by name. You never look up an id. You never read raw JSON.
 
-**Setup, once, two lines.** You need a CDS token from NPR Member Partnership (one per person under NPR's terms) and Node.js 20 or newer.
+**Setup, once.** You need a CDS token from NPR Member Partnership (one per person under NPR's terms) and Node.js 20 or newer.
 
 ```bash
 npx -y npr-cds-mcp setup                              # asks for your token, then "which station are you?"
 claude mcp add npr-cds -s user -- npx -y npr-cds-mcp  # Claude Code
+codex mcp add npr-cds -- npx -y npr-cds-mcp           # Codex: the CLI, the IDE extension, and the ChatGPT desktop app
 ```
+
+**ChatGPT desktop app.** It shares Codex's MCP settings, so the `codex mcp add` line above is enough. Without a terminal: in the app, open Settings, then MCP servers, then Add server; choose STDIO, name it `npr-cds`, command `npx`, arguments `-y npr-cds-mcp`. Run `setup` once first either way; every client reads the same saved token and station.
+
+**ChatGPT on the web (chatgpt.com) can't use it.** ChatGPT's web connectors reach only MCP servers hosted at a web address, and `npr-cds-mcp` runs on your own computer. Use the desktop app, Codex, or Claude.
 
 `setup` saves the token to `~/.config/npr-cds/token` and your station to `~/.config/npr-cds/config.json`, both readable only by you. Type your station's name, call letters, or city; it looks the id up in NPR's directory and shows you the matches. `npx -y npr-cds-mcp station` changes it later. Claude Desktop or any other MCP client takes the same server as JSON:
 
@@ -171,7 +176,7 @@ If any of these misbehave, open an issue with the prompt and the answer. The `se
 
 **How it works, in order.** You ask for "Ladies First". The server looks the name up in a catalog it keeps (a lookup table, a list of names and ids it has seen before). If the name is missing, it reads your station's newest stories, notes which collections they point to, resolves the ones CDS will serve and infers the rest from the story urls, and remembers them for next time. It then asks CDS for that collection's stories, newest first. Before anything reaches the assistant it trims each 17 KB document down to the dozen fields a person needs, about 100 bytes. For a words question it also scans the newest 300 stories' titles and teasers itself and merges the two lists, so the assistant reads ten good hits instead of three hundred raw ones.
 
-**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`. 0.5.1: show names resolve by kind. 0.6.0: `read_story`, and the saved prompts compute real timestamps. 0.7.0: `search_archive`, `coverage_scan`, `coverage_gap`. 0.7.1: `find_station` and `find_collection` results accepted by strict MCP clients; server instructions name the home station. 0.8.0: image and byline on every hit and in `read_story`; city, state and format on stations; word search reads the home station and NPR; `weekly-prep` and `show-prep` prompts; `newsletter-draft` names the home station. 0.8.1: `read_story` also returns `owner`, `teaser`, and `premium`. 0.8.2: the three prep prompts leave out tool talk and rights paragraphs and never build an angle on a tragedy; `weekly-prep` lists only new stories; `show-prep` scans one subject.
+**What's new by version.** 0.2.0: `find_stories`, `find_station`, `find_collection`, compact hits. 0.3.0: `check_story`, `station_labels`, `whats_new_since`. 0.4.0: `setup` asks your station, `latest_newscast`, the `morning-prep` and `newsletter-draft` prompts. 0.5.0: podcasts through `find_stories`, a premium note on every hit that needs one, podcasts in `station_labels`. 0.5.1: show names resolve by kind. 0.6.0: `read_story`, and the saved prompts compute real timestamps. 0.7.0: `search_archive`, `coverage_scan`, `coverage_gap`. 0.7.1: `find_station` and `find_collection` results accepted by strict MCP clients; server instructions name the home station. 0.8.0: image and byline on every hit and in `read_story`; city, state and format on stations; word search reads the home station and NPR; `weekly-prep` and `show-prep` prompts; `newsletter-draft` names the home station. 0.8.1: `read_story` also returns `owner`, `teaser`, and `premium`. 0.8.2: the three prep prompts leave out tool talk and rights paragraphs and never build an angle on a tragedy; `weekly-prep` lists only new stories; `show-prep` scans one subject. 0.8.3: setup instructions for Codex and the ChatGPT desktop app (no code change).
 
 **Podcasts.** Ask with `kind: podcasts`, or just say "podcast" and the assistant will. Episodes come back like stories, with the show name resolved from the podcast channel. NPR's podcast episodes all carry the premium flag, so each one says play or link, never store; a station's own podcasts usually don't. Newscasts are excluded from podcast searches and have their own tool.
 
