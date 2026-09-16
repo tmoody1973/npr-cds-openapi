@@ -11,7 +11,12 @@ You need a CDS token from NPR Member Partnership and Node.js 20 or newer.
 ```bash
 npx -y npr-cds-mcp setup                              # asks for your token, then "which station are you?"
 claude mcp add npr-cds -s user -- npx -y npr-cds-mcp  # Claude Code
+codex mcp add npr-cds -- npx -y npr-cds-mcp           # Codex: the CLI, the IDE extension, and the ChatGPT desktop app
 ```
+
+**ChatGPT desktop app.** It shares Codex's MCP settings, so the `codex mcp add` line above is enough. Without a terminal: in the app, open Settings, then MCP servers, then Add server; choose STDIO, name it `npr-cds`, command `npx`, arguments `-y npr-cds-mcp`. Run `setup` once first either way; every client reads the same saved token and station.
+
+**ChatGPT on the web (chatgpt.com) can't use it.** ChatGPT's web connectors reach only MCP servers hosted at a web address, and `npr-cds-mcp` runs on your own computer. Use the desktop app, Codex, or Claude.
 
 Any MCP client, as JSON:
 
@@ -20,6 +25,8 @@ Any MCP client, as JSON:
 ```
 
 `setup` saves the token and your station under `~/.config/npr-cds/`, readable only by you. `npx -y npr-cds-mcp station` changes the station later. `NPR_CDS_TOKEN` and `NPR_CDS_HOME_STATION` in the environment override the saved files. With a station set, other stations' content comes back marked display-only, per NPR's terms.
+
+More: [demo prompts for a newsroom](https://github.com/tmoody1973/npr-cds-openapi/blob/main/docs/DEMO-PROMPTS.md).
 
 ## What you can ask
 

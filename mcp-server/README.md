@@ -26,6 +26,8 @@ Any MCP client, as JSON:
 
 `setup` saves the token and your station under `~/.config/npr-cds/`, readable only by you. `npx -y npr-cds-mcp station` changes the station later. `NPR_CDS_TOKEN` and `NPR_CDS_HOME_STATION` in the environment override the saved files. With a station set, other stations' content comes back marked display-only, per NPR's terms.
 
+More: [demo prompts for a newsroom](https://github.com/tmoody1973/npr-cds-openapi/blob/main/docs/DEMO-PROMPTS.md).
+
 ## What you can ask
 
 - "What are the three newest Ladies First episodes?"

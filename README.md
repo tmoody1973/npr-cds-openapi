@@ -100,6 +100,8 @@ With a station set, anything from another station comes back marked *display-onl
 | "/morning-prep" (a saved prompt) | The assistant runs what's-new, NPR's stories, and the newscast itself, then writes a rundown a host can read out loud, with three talk breaks. |
 | "/newsletter-draft housing" | Our housing stories then NPR's, one or two sentences each, every item linking back, audio links included. |
 
+**Demo prompts.** [docs/DEMO-PROMPTS.md](docs/DEMO-PROMPTS.md) — twenty scenarios for showing a newsroom what this is for, with a five-minute demo script.
+
 **Real situations.**
 
 - *A digital editor gets a ticket: "my story isn't on the site."* Paste the url into `check_story`. Nine times out of ten the answer is a missing Show label or audio attached as a link instead of a file, and the tool says which.
