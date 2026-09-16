@@ -10,7 +10,7 @@ export function readHomeStation(env: NodeJS.ProcessEnv = process.env, dir = CONF
   try { return JSON.parse(readFileSync(path.join(dir, 'config.json'), 'utf8')).homeStation || undefined; } catch { return undefined; }
 }
 
-const TOOL_HINTS = 'Words like story, episode, newscast, show, podcast mean NPR CDS content: use find_stories first (name the station for local content), then read_story. Use coverage_scan for "who in the network covered X" questions.';
+const TOOL_HINTS = 'Words like story, episode, newscast, show, podcast mean NPR CDS content: use find_stories first (name the station for local content), then read_story. Use coverage_scan for "who in the network covered X" questions. Whenever you name a story, episode or newscast, give the url from the tool result with it; a hit with no url is "no public link", not an item to drop. A newscast whose expires time has already passed cannot go to air: say so instead of offering it.';
 
 // Sent to MCP clients at connect, so an assistant knows the smart tools exist before guessing at raw CDS calls.
 export function smartInstructions(env: NodeJS.ProcessEnv = process.env, dir = CONFIG_DIR): string {

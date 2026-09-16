@@ -30,13 +30,13 @@ test('smartInstructions names the home station when one is set', () => {
   saveHomeStation('s921', d);
   assert.equal(
     smartInstructions({}, d),
-    'Home station: s921. Words like story, episode, newscast, show, podcast mean NPR CDS content: use find_stories first (name the station for local content), then read_story. Use coverage_scan for "who in the network covered X" questions.',
+    'Home station: s921. Words like story, episode, newscast, show, podcast mean NPR CDS content: use find_stories first (name the station for local content), then read_story. Use coverage_scan for "who in the network covered X" questions. Whenever you name a story, episode or newscast, give the url from the tool result with it; a hit with no url is "no public link", not an item to drop. A newscast whose expires time has already passed cannot go to air: say so instead of offering it.',
   );
 });
 
 test('smartInstructions drops the home-station sentence when none is set', () => {
   assert.equal(
     smartInstructions({}, dir()),
-    'Words like story, episode, newscast, show, podcast mean NPR CDS content: use find_stories first (name the station for local content), then read_story. Use coverage_scan for "who in the network covered X" questions.',
+    'Words like story, episode, newscast, show, podcast mean NPR CDS content: use find_stories first (name the station for local content), then read_story. Use coverage_scan for "who in the network covered X" questions. Whenever you name a story, episode or newscast, give the url from the tool result with it; a hit with no url is "no public link", not an item to drop. A newscast whose expires time has already passed cannot go to air: say so instead of offering it.',
   );
 });
